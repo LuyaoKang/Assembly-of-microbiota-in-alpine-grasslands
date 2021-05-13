@@ -1,0 +1,1634 @@
+---
+title: "community assembly in alpine ecosystem"
+author: "Luyao Kang"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r setup, include = F}
+knitr::opts_chunk$set(
+  collapse = T, echo=T, comment="#>", message=F, warning=F,
+	fig.align="center", fig.width=5, fig.height=3, dpi=150)
+```
+
+# Load libraries
+```{r}
+setwd('E:/147asvs/')
+library(phyloseq)
+library(ape)
+library(Biostrings)
+library(reshape)
+library(ggplot2)
+```
+
+# Construct phyloseq objects
+```{r}
+## bacteria
+#read in otu table
+otu.table <- read.delim('./data/bacteria/otutab_rare.txt',sep="\t", row.names=1, header = T)
+otu.table <- as.matrix(otu.table)
+
+#read in taxonomy, seperated by kingdom phylum class order family genus species 
+taxonomy <- read.delim('./data/bacteria/taxonomy.txt',sep="\t",row.names=1, header = T)
+taxonomy <- as.matrix(taxonomy)
+
+#read in metadata
+metadata <- read.delim("./data/bacteria/metadata.txt", sep = '\t', row.names=1, header = T)
+
+# read in tree
+tree <- read_tree('./data/bacteria/otus.nwk')
+
+#read in represent dna sequences
+ref_seqs <- readDNAStringSet(file = "./data/bacteria/otus.fa",
+                             format = "fasta", nrec = -1L, skip = 0L, seek.first.rec = FALSE, use.names = TRUE)
+
+#import as phyloseq objects
+otu.table <- otu_table(otu.table, taxa_are_rows = TRUE)
+taxonomy <- tax_table(taxonomy)
+metadata <- sample_data(metadata)
+
+#merge into one phyloseq object
+bac.phylo <- phyloseq(otu.table, taxonomy, metadata, tree, ref_seqs)
+bac.phylo
+bac.phylo.rel <- microbiome::transform(bac.phylo, "compositional")
+
+## fungi
+#read in otu table
+otu.table <- read.delim('./data/fungi/otutab_rare.txt',sep="\t", row.names=1, header = T)
+otu.table <- as.matrix(otu.table)
+
+#read in taxonomy, seperated by kingdom phylum class order family genus species 
+taxonomy <- read.delim('./data/fungi/taxonomy.txt',sep="\t",row.names=1, header = T)
+taxonomy <- as.matrix(taxonomy)
+
+#read in metadata
+metadata <- read.delim("./data/fungi/metadata.txt", sep = '\t', row.names=1, header = T)
+
+# read in tree
+tree <- read_tree('./data/fungi/otus.nwk')
+
+#read in represent dna sequences
+ref_seqs <- readDNAStringSet(file = "./data/fungi/otus.fa",
+                             format = "fasta", nrec = -1L, skip = 0L, seek.first.rec = FALSE, use.names = TRUE)
+
+#import as phyloseq objects
+otu.table <- otu_table(otu.table, taxa_are_rows = TRUE)
+taxonomy <- tax_table(taxonomy)
+metadata <- sample_data(metadata)
+
+#merge into one phyloseq object
+fungi.phylo <- phyloseq(otu.table, taxonomy, metadata, tree, ref_seqs)
+fungi.phylo
+fungi.phylo.rel <- microbiome::transform(fungi.phylo, "compositional")
+
+## protist
+#read in otu table
+otu.table <- read.delim('./data/protist/otutab_rare.txt',sep="\t", row.names=1, header = T)
+otu.table <- as.matrix(otu.table)
+
+#read in taxonomy, seperated by kingdom phylum class order family genus species 
+taxonomy <- read.delim('./data/protist/taxonomy.txt',sep="\t",row.names=1, header = T)
+taxonomy <- as.matrix(taxonomy)
+
+#read in metadata
+metadata <- read.delim("./data/protist/metadata.txt", sep = '\t', row.names=1, header = T)
+
+# read in tree
+tree <- read_tree('./data/protist/otus.nwk')
+
+#read in represent dna sequences
+ref_seqs <- readDNAStringSet(file = "./data/protist/otus.fa",
+                             format = "fasta", nrec = -1L, skip = 0L, seek.first.rec = FALSE, use.names = TRUE)
+
+#import as phyloseq objects
+otu.table <- otu_table(otu.table, taxa_are_rows = TRUE)
+taxonomy <- tax_table(taxonomy)
+metadata <- sample_data(metadata)
+
+#merge into one phyloseq object
+protist.phylo <- phyloseq(otu.table, taxonomy, metadata, tree, ref_seqs)
+protist.phylo
+protist.phylo.rel <- microbiome::transform(protist.phylo, "compositional")
+
+## animal
+#read in otu table
+otu.table <- read.delim('./data/animal/otutab_rare.txt',sep="\t", row.names=1, header = T)
+otu.table <- as.matrix(otu.table)
+
+#read in taxonomy, seperated by kingdom phylum class order family genus species 
+taxonomy <- read.delim('./data/animal/taxonomy.txt',sep="\t",row.names=1, header = T)
+taxonomy <- as.matrix(taxonomy)
+
+#read in metadata
+metadata <- read.delim("./data/animal/metadata.txt", sep = '\t', row.names=1, header = T)
+
+# read in tree
+tree <- read_tree('./data/animal/otus.nwk')
+
+#read in represent dna sequences
+ref_seqs <- readDNAStringSet(file = "./data/animal/otus.fa",
+                             format = "fasta", nrec = -1L, skip = 0L, seek.first.rec = FALSE, use.names = TRUE)
+
+#import as phyloseq objects
+otu.table <- otu_table(otu.table, taxa_are_rows = TRUE)
+taxonomy <- tax_table(taxonomy)
+metadata <- sample_data(metadata)
+
+#merge into one phyloseq object
+animal.phylo <- phyloseq(otu.table, taxonomy, metadata, tree, ref_seqs)
+animal.phylo
+animal.phylo.rel <- microbiome::transform(animal.phylo, "compositional")
+```
+
+# Comunity composition 
+Extract list of top N Taxa, taxrank indicate 1 to kingdom, 2(phylum), 3(class)
+```{r}
+new.df <-function(phylo.rel, taxrank, k, N) {
+     otu_tab <- otu_table((tax_glom(phylo.rel, taxrank)))
+     tax.names <- as.vector(tax_table(tax_glom(phylo.rel,taxrank))[,k])
+     rownames(otu_tab) <- tax.names
+     rowmean <-sapply(1:nrow(otu_tab),function(x) mean(otu_tab[x,]))
+     otu_tab<-otu_tab[order(rowmean,decreasing=TRUE), ]
+     taxa_list<-rownames(otu_tab)[1:N]
+     new_df<-otu_tab[rownames(otu_tab) %in% taxa_list,]
+     new_df <- melt(new_df, id.vars = 'taxa')
+     colnames(new_df) <- c('taxa','site','relative_abundance')
+     new_df$taxa <- factor(new_df$taxa, ordered = T, levels = rev(taxa_list))
+     return(new_df)
+}
+
+phylum.plot.fun <- function(new_df) {
+  p <- ggplot(new_df, aes(x = taxa, y = relative_abundance *100, fill = taxa)) +
+    geom_boxplot(outlier.shape = NA) +
+    #scale_fill_viridis(discrete = TRUE, alpha=0.6) +
+    geom_jitter(color="steelblue", size=1.4, alpha=0.2) +
+    theme_classic() +
+    theme(
+      legend.position="none",
+      plot.title = element_text(size=11)
+    ) +
+    xlab("")  + ylab('Relative abundance (%)')+
+    coord_flip()
+  return(p)  
+}
+new_df_bac <- new.df(bac.phylo.rel, 'Phylum', 2, 15)
+new_df_fungi <- new.df(fungi.phylo.rel, 'Phylum', 2, 15)
+new_df_protist <- new.df(protist.phylo.rel, 'Phylum', 2, 15)
+new_df_animal <- new.df(animal.phylo.rel, 'Class', 3, 15)
+
+bac.phy.boxplot <- phylum.plot.fun(new_df_bac)
+fungi.phy.boxplot <- phylum.plot.fun(new_df_fungi)
+protist.phy.boxplot <- phylum.plot.fun(new_df_protist)
+animal.phy.boxplot <- phylum.plot.fun(new_df_animal)
+
+##determine the class compositions within top 10 phylums##
+arrange.tab <- function(phylo, N, taxrank, vect) {
+  subphylo <- tax_glom(phylo, taxrank)
+  subphylo.rel <- microbiome::transform(subphylo, "compositional")
+  ra.tab <- otu_table(subphylo.rel)
+  MRA <- rowMeans(ra.tab)
+  group <- tax_table(subphylo.rel)[,vect]
+  mra.tab <- data.frame(group,MRA)
+  colnames(mra.tab) <- c('level1', 'level2', 'MRA')
+  #arrange the class table
+  library(tidyr)
+  mra.tab <- mra.tab %>% spread(level2, MRA)
+  mra.tab[is.na(mra.tab)] <- 0
+  rownames(mra.tab)<-mra.tab$'level1'
+  mra.tab<-as.matrix(t(mra.tab[,-1])*100)
+  colsum <-apply(mra.tab,2,sum)
+  rowsum<-apply(mra.tab,1,sum)
+  top_N_tab<-(mra.tab[order(rowsum,decreasing=TRUE),order(colsum,decreasing=TRUE)])[,1:N]
+  head(top_N_tab)
+  top_N_tab<-as.matrix(top_N_tab)
+  return(top_N_tab)
+}
+
+top10phylum_bcateria <- arrange.tab(bac.phylo, 10, 'Class', c(2,3))
+top10phylum_fungi <- arrange.tab(fungi.phylo, 10, 'Class', c(2,3))
+top10phylum_protist <- arrange.tab(protist.phylo, 10, 'Class', c(2,3))
+top10class_animal <- arrange.tab(animal.phylo, 7, 'Order', c(3,4))
+
+
+# Get the stacked barplot
+# create color palette:
+#library(RColorBrewer)
+#coul <- brewer.pal(nrow(top10_phy), "Pastel2") 
+mycol <-c(119,132,147,454,89,404,123,529,463,104,552,28,54,84,256,100,
+          558,43,652,31,610,477,588,99,81,503,562,76,96,495,77,12,90,
+          345,255,401,366,276,158,436)
+
+#pdf(file="./result/stacked_barplot_composition.pdf",width=890,height=590,pointsize=15,)
+layout(matrix(c(1:8),4,2, byrow = F))
+#bacteria
+mycol <-colors()[rep(mycol,nrow(top10phylum_bcateria))]
+par(mar=c(2,5,2,2))
+barplot(top10phylum_bcateria,width=1.8,space=0.4,plot=T,las=2,
+        col=mycol[1:nrow(top10phylum_bcateria)],cex.axis=0.8,cex.names=0.7,border=NA,
+        xlab = 'Phylum',ylab="Relative abundance(%)",
+        offset=0,cex.lab=1)
+par(mar=c(2,3.5,3.5,1))
+plot.new()
+legend("topleft",legend=rownames(top10phylum_bcateria),
+       ncol=3,fill=mycol[1:nrow(top10phylum_bcateria)],cex=0.6,bty="n")
+
+#protist
+par(mar=c(2,5,2,2))
+barplot(top10phylum_protist,width=1.8,space=0.4,plot=T,las=2,
+        col=mycol[1:nrow(top10phylum_protist)],cex.axis=0.8,cex.names=0.7,border=NA,
+        xlab = 'Phylum',ylab="Relative abundance(%)",
+        offset=0,cex.lab=1)
+par(mar=c(2,3.5,3.5,1))
+plot.new()
+legend("topleft",legend=rownames(top10phylum_protist),
+       ncol=3,fill=mycol[1:nrow(top10phylum_protist)],cex=0.6,bty="n")
+
+#fungi
+par(mar=c(2,5,2,2))
+barplot(top10phylum_fungi,width=1.8,space=0.4,plot=T,las=2,
+        col=mycol[1:nrow(top10phylum_fungi)],cex.axis=0.8,cex.names=0.7,border=NA,
+        xlab = 'Phylum',ylab="Relative abundance(%)",
+        offset=0,cex.lab=1)
+par(mar=c(2,3.5,3.5,1))
+plot.new()
+legend("topleft",legend=rownames(top10phylum_fungi),
+       ncol=3,fill=mycol[1:nrow(top10phylum_fungi)],cex=0.6,bty="n")
+
+#animal
+par(mar=c(2,5,2,2))
+barplot(top10class_animal,width=1.8,space=0.4,plot=T,las=2,
+        col=mycol[1:nrow(top10class_animal)],cex.axis=0.8,cex.names=0.7,border=NA,
+        xlab = 'Phylum',ylab="Relative abundance(%)",
+        offset=0,cex.lab=1)
+par(mar=c(2,3.5,3.5,1))
+plot.new()
+legend("topleft",legend=rownames(top10class_animal),
+       ncol=3,fill=mycol[1:nrow(top10class_animal)],cex=0.6,bty="n")
+#dev.off()
+```
+
+# Biogeographic pattern of soil microbiome
+## Variation and Distance-Decay relationshipS
+```{r}
+deg2rad <- function(deg) return(deg*pi/180)
+# Calculates the geodesic distance between two points specified by 
+# radian latitude/longitude using the Haversine formula
+# Ouputs distance between sites 1 and 2 as meters
+gcd.hf <- function(long1, lat1, long2, lat2) {
+  R <- 6371 # Earth mean radius [km]
+  delta.long <- (long2 - long1)
+  delta.lat <- (lat2 - lat1)
+  a <- sin(delta.lat/2)^2 + cos(lat1) * cos(lat2) * sin(delta.long/2)^2
+  c <- 2 * asin(min(1,sqrt(a)))
+  d = (R * c)*1000
+  return(d) # Distance in meters
+}
+
+
+# Fxn to calculate matrix of distances between each two sites
+# INPUT: a data frame in which longs are in first column and lats in second column
+# OUTPUT: a distance matrix (class dist) between all pairwise sites
+# Output distances are in meters
+CalcDists <- function(longlats) {
+  name <- list(rownames(longlats), rownames(longlats))
+  n <- nrow(longlats)
+  z <- matrix(0, n, n, dimnames = name)
+  for (i in 1:n) {
+    for (j in 1:n) z[i, j] <- gcd.hf(long1 = deg2rad(longlats[i, 1]), 
+                                     lat1 = deg2rad(longlats[i, 2]), long2 = deg2rad(longlats[j, 1]), 
+                                     lat2 = deg2rad(longlats[j, 2]))
+  }
+  z <- as.dist(z)
+  return(z)
+}
+
+summary.model<-function(model){
+  r.squre<-round(summary(model)$r.squared,3)
+  p.value<-round(anova(model)$'Pr(>F)'[1],3)
+  p.stars<- function(p.values) {
+    unclass(symnum(p.values, corr = FALSE, 
+                   na = FALSE, cutpoints = c(0,0.001, 0.01, 0.05, 0.1, 1),
+                   symbols = c("***", "**", "*", ".", " ")))}
+  sig<-p.stars(p.value)
+  slope <- round(model$coefficients[[2]],3)
+  results<-data.frame(slope,r.squre,p.value,sig)
+  return(results)
+}
+
+library(vegan)
+library(ggplot2)
+
+######bacteria#########
+# calculate the disimilarity matrix of environment factors based on euclid distance
+env.table<-sample_data(bac.phylo)
+geo_dist<-data.frame(env.table[,1:2])
+geo_dist<-CalcDists(geo_dist)/100000
+Geography.dist <- as.numeric(geo_dist)
+#环境因子欧氏距离
+env_vars<-env.table[,-(1:4)]
+#标准化环境数据
+env_vars<-decostand(as.data.frame(env_vars), 'standardize')
+env_dist<-vegdist(env_vars, 'euclidean',upper=F)
+env.dist<-as.numeric(env_dist)
+#DDR
+ddr_fun <- function(phylo){
+  #对微生物数据进行hellinger转换
+  #otu_tab <- decostand(otu_tab, 'hellinger', MARGIN = 1)
+  dist_mat <- vegdist(t(otu_table(phylo)), 'bray', upper=F)
+  com_dissimilarty <- as.numeric(dist_mat)*100
+  com_similarty <- (1-as.numeric(dist_mat))*100
+  dist_tab<-as.data.frame(cbind(com_similarty, com_dissimilarty,
+                                Geography.dist, env.dist))
+  colnames(dist_tab) <-c ('com_similarty', 'com_dissimilarty',
+                          'Geography', 'environment')
+  list <- list(dist_tab, dist_mat)
+  return(list)
+}
+bacteria.dis.tab <- ddr_fun(bac.phylo)
+fungi.dis.tab <- ddr_fun(fungi.phylo)
+protist.dis.tab <- ddr_fun(protist.phylo)
+animal.dis.tab <- ddr_fun(animal.phylo)
+
+#ordinary least-squares regressions
+bacteria.fit<-lm(com_similarty~Geography,data=bacteria.dis.tab[[1]])
+summary(bacteria.fit)
+bacteria.ln.fit<-lm(com_similarty/100~log(Geography*100+1),data=bacteria.dis.tab[[1]])
+summary(bacteria.ln.fit)
+
+fungi.fit<-lm(com_similarty~Geography,data=fungi.dis.tab[[1]])
+summary(fungi.fit)
+fungi.ln.fit<-lm(com_similarty/100~log(Geography*100+1),data=fungi.dis.tab[[1]])
+summary(fungi.ln.fit)
+
+protist.fit<-lm(com_similarty~Geography,data=protist.dis.tab[[1]])
+summary(protist.fit)
+protist.ln.fit<-lm(com_similarty/100~log(Geography*100+1),data=protist.dis.tab[[1]])
+summary(protist.ln.fit)
+
+animal.fit<-lm(com_similarty~Geography,data=animal.dis.tab[[1]])
+summary(animal.fit)
+animal.ln.fit<-lm(com_similarty/100~log(Geography*100+1),data=animal.dis.tab[[1]])
+summary(animal.ln.fit)
+
+#mantel test
+mantel(geo_dist,bacteria.dis.tab[[2]],method="spearman")
+
+mantel(geo_dist,fungi.dis.tab[[2]],method="spearman")
+
+mantel(geo_dist,protist.dis.tab[[2]],method="spearman")
+
+mantel(geo_dist,animal.dis.tab[[2]],method="spearman")
+
+#compare the difference between multi regression slope
+library(emmeans)
+dat<-rbind(cbind(taxa=c(rep('Bacteria',nrow(bacteria.dis.tab[[1]]))),bacteria.dis.tab[[1]]),
+           cbind(taxa=c(rep('Fungi',nrow(fungi.dis.tab[[1]]))),fungi.dis.tab[[1]]),
+           cbind(taxa=c(rep('Protists',nrow(protist.dis.tab[[1]]))),protist.dis.tab[[1]]),
+           cbind(taxa=c(rep('Animal',nrow(animal.dis.tab[[1]]))),animal.dis.tab[[1]]))
+
+##comparison of slope of DDRs
+m.interaction <- lm(com_similarty ~ Geography*taxa, data = dat)
+anova(m.interaction)
+
+# Obtain slopes
+m.interaction$coefficients
+geo.lst <- emtrends(m.interaction, "taxa", var="Geography")
+
+# Compare slopes
+pairs(geo.lst)
+
+#compare the variations of composition
+library(plyr)
+ddply(dat, c("taxa"), summarise,
+      mean = mean(com_dissimilarty/100), sd = sd(com_dissimilarty/100),
+      se = sd(com_dissimilarty/100)/sqrt(length(com_dissimilarty)))
+
+mode_ln<-aov(com_dissimilarty/100~taxa,dat)
+summary(mode_ln)
+TukeyHSD(mode_ln)$taxa
+
+##plot
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+n = 4
+cols = gg_color_hue(n)
+dat$taxa<-factor(dat$taxa,ordered=T,levels = c('Bacteria','Fungi', 'Protists','Animal'))
+
+p_dissimilarty<-ggplot(dat,aes(taxa,com_dissimilarty/100))+
+  geom_violin(trim=T,aes(fill=taxa))+
+  scale_fill_manual(values= cols)+
+  geom_boxplot(width=0.1,fill="white")+
+  xlab('Taxa')+ylab('Community dissimilarity')+
+  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
+        panel.grid = element_blank(),legend.position='none')
+
+p_distance<-ggplot(dat,aes(Geography,com_similarty)) + 
+  geom_point(shape=19,alpha=0.1,aes(colour = taxa))+
+  scale_color_manual(values=cols)+
+  geom_smooth(method="lm", size=1, se=T,colour='black') +
+  facet_wrap( .~ taxa , scales="free",ncol = 2) +
+  ylab('Community similarity')+xlab('Geographic distance(100km)')+
+  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
+        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+
+p_ln.distance<-ggplot(dat,aes(log(Geography*100+1),com_similarty/100)) + 
+  geom_point(shape=19,alpha=0.1,aes(colour = taxa))+
+  scale_color_manual(values=cols)+
+  geom_smooth(method="lm", size=1, se=T,colour='black') +
+  facet_wrap( .~ taxa , scales="free",ncol = 2) +
+  ylab('Community similarity')+xlab('Ln(Geographic distance(km)+1)')+
+  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
+        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+
+library(cowplot)
+combine1<-plot_grid(p_dissimilarty,p_distance,
+                    labels = c('(a)','(b)'), ncol = 2, label_x = .03,label_y = 1,
+                    rel_widths = c(2, 3),hjust = 0, label_size=11)
+combine1
+```
+
+## Test sampling effort
+```{r}
+library(vegan)
+library(ggplot2)
+## calculate the disimilarity matrix of environment factors based on euclid distance
+env.table<-sample_data(bac.phylo)
+geo_dist<-data.frame(env.table[,1:2])
+geo_dist<-CalcDists(geo_dist)/100000
+Geography.dist <- as.numeric(geo_dist)
+
+# This function was modified according Meyer et al. 2018 ISME-J, DOI: 10.1038/s41396-018-0103-3, 
+# which performs a single rarefaction of a community matrix, calculates the slope 
+# of the distance-decay relationship of that community, then repeats iteratively. It was
+# designed to explore the relationship between sampling effort and biogeographic patterns.
+
+# The user provides: 
+# 'otu' - a community matrix with samples as rows and columns as taxa, 
+# 'depth'- the level to which the community should be rarefied,  
+# 'geo'- a matrix of geographic distance between samples (with sample names that match 'otu'),
+# 'method'- the desired community dissimilarity metric (see Vegan package, function 'vegdist' for metric options),
+# 'niter' -  the number of iterations that a community matrix will be rarefied then regressed against distance.
+
+sampling_effort_dd <- function(otu, depth, geo, method, niter){
+  require(vegan)
+  require(labdsv)
+  slope_df <- data.frame('Slope_est'=as.numeric(), 'Std_er'=as.numeric(), 't_val'=as.numeric(), 'p'=as.numeric())
+  for(i in 1:niter){
+    print(i)
+    otu_rare <-suppressWarnings(rrarefy(otu, sample=depth))
+    otu_rare <- otu_rare[which(rowSums(otu_rare) >= (0.95 *depth)),] 
+    geo <- geo[which(row.names(geo) %in% row.names(otu_rare)),
+               which(row.names(geo) %in% row.names(otu_rare))]
+    
+    bray <- as.matrix(vegdist(otu_rare, method=method))
+    bray[upper.tri(bray)] <- 0 
+    bray_long <- dematrify(as.data.frame(bray))
+    bray_long$Bray <- bray_long$abundance
+    bray_long$abundance <- NULL
+    bray_long$Geodist <- NA
+    
+    geo[upper.tri(geo)] <- 0 
+    geo_long <- dematrify(as.data.frame(geo))
+    dist_combined <- bray_long
+    dist_combined$Geodist <- geo_long$abundance
+    dist_combined$Bray <- (1- dist_combined$Bray)*100
+    dist_combined$Geodist <- dist_combined$Geodist
+    lmcoef <- data.frame(summary(lm(dist_combined$Bray ~ dist_combined$Geodist))$coefficient)
+    slope_df[i,] <- lmcoef[2,]
+  }
+  return(slope_df)
+}
+
+## calculate the geographic distance based on euclid distance
+env.table<-sample_data(bac.phylo)
+geo_dist<-data.frame(env.table[,1:2])
+geo_dist<-as.matrix(CalcDists(geo_dist)/100000)
+
+#calculates the slope of the distance-decay relationship with 100 iterations at defferent rarefication levels.
+#bacteria
+otu.table <- read.delim('./data/bacteria/otutab.txt',sep="\t", row.names=1, header = T)
+bac.otu.table <- as.matrix(t(otu.table))
+slop_bac_rare10000 <- sampling_effort_dd(bac.otu.table, 10000, geo_dist, "bray", 100)
+slop_bac_rare7000 <- sampling_effort_dd(bac.otu.table, 7000, geo_dist, "bray", 100)
+slop_bac_rare3500 <- sampling_effort_dd(bac.otu.table, 3500, geo_dist, "bray", 100)
+
+#fungi
+otu.table <- read.delim('./data/fungi/otutab.txt',sep="\t", row.names=1, header = T)
+fungi.otu.table <- as.matrix(t(otu.table))
+slop_fungi_rare2000 <- sampling_effort_dd(fungi.otu.table, 2000, geo_dist, "bray", 100)
+slop_fungi_rare1500 <- sampling_effort_dd(fungi.otu.table, 1500, geo_dist, "bray", 100)
+slop_fungi_rare800 <- sampling_effort_dd(fungi.otu.table, 800, geo_dist, "bray", 100)
+
+#protist
+otu.table <- read.delim('./data/protist/otutab.txt',sep="\t", row.names=1, header = T)
+protist.otu.table <- as.matrix(t(otu.table))
+slop_protist_rare550 <- sampling_effort_dd(protist.otu.table, 550, geo_dist, "bray", 100)
+slop_protist_rare400 <- sampling_effort_dd(protist.otu.table, 400, geo_dist, "bray", 100)
+slop_protist_rare250 <- sampling_effort_dd(protist.otu.table, 250, geo_dist, "bray", 100)
+
+#animal
+otu.table <- read.delim('./data/animal/otutab.txt',sep="\t", row.names=1, header = T)
+animal.otu.table <- as.matrix(t(otu.table))
+slop_animal_rare280 <- sampling_effort_dd(animal.otu.table, 280, geo_dist, "bray", 100)
+slop_animal_rare150 <- sampling_effort_dd(animal.otu.table, 150, geo_dist, "bray", 100)
+slop_animal_rare100 <- sampling_effort_dd(animal.otu.table, 100, geo_dist, "bray", 100)
+
+#melt the data for boxplot
+bac.slop <- data.frame(tax = rep('Bacteria', 300), 
+                  depth = c(rep(10000, 100), rep(7000, 100), rep(3500, 100)),
+                  Slope_est = c(slop_bac_rare10000$Slope_est, slop_bac_rare7000$Slope_est,
+                                slop_bac_rare3500$Slope_est))
+fungi.slop <- data.frame(tax = rep('Fungi', 300), 
+                  depth = c(rep(2000, 100), rep(1500, 100), rep(800, 100)),
+                  Slope_est = c(slop_fungi_rare2000$Slope_est, slop_fungi_rare1500$Slope_est,
+                                slop_fungi_rare800$Slope_est))
+protist.slop <- data.frame(tax = rep('Protist', 300), 
+                    depth = c(rep(550, 100), rep(400, 100), rep(250, 100)),
+                    Slope_est = c(slop_protist_rare550$Slope_est, slop_protist_rare400$Slope_est,
+                                  slop_protist_rare250$Slope_est))
+animal.slop <- data.frame(tax = rep('Animal', 300), 
+                      depth = c(rep(280, 100), rep(150, 100), rep(100, 100)),
+                      Slope_est = c(slop_animal_rare280$Slope_est, slop_animal_rare150$Slope_est,
+                                    slop_animal_rare100$Slope_est))
+slop_df <- data.frame(rbind(bac.slop, fungi.slop, protist.slop, animal.slop))
+slop_df$depth <- as.character(slop_df$depth)
+slop_df$depth <- factor(slop_df$depth, ordered = T,
+                        levels = c('10000', '7000', '3500',
+                                   '2000', '1500', '800',
+                                   '550', '400', '250',
+                                   '280', '150', '100'))
+slop_df$tax <- factor(slop_df$tax, ordered = T, 
+                      levels = c('Bacteria', 'Fungi', 'Protist', 'Animal'))
+#plot
+library(ggplot2)
+g_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+n = 4
+cols = gg_color_hue(n)
+mytheme<-theme_bw()+
+  theme(axis.title = element_text(size = 14),
+        axis.text = element_text(size=12, colour = 'black'),
+        panel.grid = element_blank(),
+        #strip.background = element_rect(fill = 'skyblue'),
+        strip.text = element_text(size = 14))
+
+p_rare_slope<-ggplot(slop_df,aes(x=depth,y=Slope_est))+
+  geom_boxplot(width=0.3,aes(fill=tax))+
+  scale_fill_manual(values=cols)+
+  ylab('DD Slope')+ xlab('Rarefication level') +
+  #scale_x_discrete(limits=c('Bacteria','Fungi','Protist','Animal'))+
+  #facet_wrap(variable~., scales="free",ncol = 3)+
+  mytheme
+p_rare_slope
+```
+
+# Multivariables analysis
+## variation partitioning with two-way PERMANOVA
+Regression approach with distance as response and raw predictors
+reference:https://media.nature.com/original/nature-assets/ismej/journal/v12/n2/extref/ismej2017183x2.txt
+```{r}
+DistResponseReg <-function (DistMatrix,X) {
+  DistMatrix <- as.matrix(DistMatrix)
+  X <- as.matrix(X)
+  n <- nrow(DistMatrix)
+  p <- ncol(X)
+  row.wt = rep(1, nrow(DistMatrix))
+  col.wt = rep(1, ncol(DistMatrix))
+  st <- sum(col.wt)
+  sr <- sum(row.wt)
+  row.wt <- row.wt/sr
+  col.wt <- col.wt/st
+  DistMatrix <- -0.5*(DistMatrix*DistMatrix)
+  row.mean <- apply(row.wt * DistMatrix, 2, sum)
+  col.mean <- apply(col.wt *t(DistMatrix), 2, sum)
+  col.mean <- col.mean - sum(row.mean * col.wt)
+  DistMatrix <- sweep(DistMatrix, 2, row.mean)
+  G <- t(sweep(t(DistMatrix), 2, col.mean))
+  H<-X%*%solve(t(X)%*%X)%*%t(X)
+  I<-diag(n)
+  predicted <- H%*%G%*%H
+  residuals <- (I-H)%*%G%*%(I-H)
+  MS_regression<-sum(diag(predicted))/p
+  MS_residual<-sum(diag(residuals))/(n-p)
+  F<-MS_regression/MS_residual
+  MS_Total=sum(diag(G))/n;
+  RsqAdj=1-MS_residual/MS_Total;
+  
+  result <- list(Rsq_Adj=RsqAdj,F_value=F,res_matrix=residuals,pred_matrix=predicted)
+  return(result)
+  
+}
+
+# variation partitioning with distance matrix as response
+# and X (e.g., environment) and W (e.g., space or connectivity)
+VarPartDistResponse<-function (Dist_Matrix,X,W,Number_Permutations) {
+  X <- as.matrix(X)
+  X <- apply(X, 2, scale)
+  W <- as.matrix(W)
+  W <- apply(W, 2, scale)
+  Dist_Matrix <- as.matrix(Dist_Matrix)
+  Number_Predictors_X <- ncol(X)
+  Number_Predictors_W <- ncol(W)
+  n<-nrow(X)
+  
+  XW <- as.matrix(cbind(X,W));
+  result <- DistResponseReg(Dist_Matrix,XW)
+  abc <- result$Rsq_Adj
+  Fabc <- result$F_value
+  
+  result <- DistResponseReg(Dist_Matrix,X)
+  ab <- result$Rsq_Adj
+  Fab <- result$F_value
+  residuals_X <- result$res_matrix 
+  predicted_X <- result$pred_matrix
+  
+  result <- DistResponseReg(Dist_Matrix,W)
+  bc <- result$Rsq_Adj
+  Fbc <- result$F_value
+  residuals_W <- result$res_matrix 
+  predicted_W <- result$pred_matrix
+  
+  # unique fraction of contribution related to X
+  a <- abc - bc
+  # unique fraction of contribution related to W
+  c <- abc- ab
+  # common fraction of contribution between X and W
+  b <- abc - a - c
+  # residual fraction
+  d <- 1-abc
+  
+  Fa=(a/Number_Predictors_X)/(d/(n-Number_Predictors_X-Number_Predictors_W));
+  Fc=(c/Number_Predictors_W)/(d/(n-Number_Predictors_X-Number_Predictors_W));
+  
+  Prob_abc=1/Number_Permutations; Prob_ab=1/Number_Permutations; Prob_bc=1/Number_Permutations; Prob_a=1/Number_Permutations; Prob_c=1/Number_Permutations;
+  
+  # permutations test
+  for (i in 1:(Number_Permutations-1)) {
+    # testing fraction a; notice that we permute the residual values in W and not in X
+    permuted_rows=sample(n,replace=FALSE)
+    # permuting the residual matrix, which is from the distance, and hence the need to permute
+    # rows and columns in the same way, hence the use of permuted_rows for columns and rows below
+    # testing fraction a
+    # Yperm=predicted_W+residuals_W[permuted_rows,permuted_rows] # implement permutation of residuals in the future
+    
+    # testing fraction a
+    result <- DistResponseReg(Dist_Matrix,XW[permuted_rows,])
+    abcRnd <- result$Rsq_Adj
+    FabcRnd <- result$F_value
+    result <- DistResponseReg(Dist_Matrix,W[permuted_rows,])
+    bcRnd <- result$Rsq_Adj
+    FbcRnd <- result$F_value
+    aRnd=abcRnd-bcRnd;
+    dRnd=1-abcRnd;
+    FaRnd=(aRnd/Number_Predictors_X)/(dRnd/(n-Number_Predictors_X-Number_Predictors_W));
+    if (FaRnd >= Fa) {Prob_a<-Prob_a+1/Number_Permutations}
+    
+    # testing fraction c
+    result <- DistResponseReg(Dist_Matrix,X[permuted_rows,])
+    abRnd <- result$Rsq_Adj
+    FabRnd <- result$F_value
+    cRnd=abcRnd-abRnd;
+    FcRnd=(cRnd/Number_Predictors_W)/(dRnd/(n-Number_Predictors_X-Number_Predictors_W));
+    if (FcRnd >= Fc) {Prob_c<-Prob_c+1/Number_Permutations}
+    
+    # testing abc
+    if (FabcRnd >= Fabc) {Prob_abc<-Prob_abc+1/Number_Permutations}
+    # testing ab
+    if (FabRnd >= Fab) {Prob_ab<-Prob_ab+1/Number_Permutations}
+    # testing bc
+    if (FbcRnd >= Fbc) {Prob_bc<-Prob_bc+1/Number_Permutations}
+    
+  }
+  
+  result <- mat.or.vec(7,2)
+  
+  result[1,1] <- abc
+  result[2,1] <- ab
+  result[3,1] <- bc
+  result[4,1] <- a
+  result[5,1] <- c
+  result[6,1] <- b
+  result[7,1] <- d
+  
+  result[1,2] <- Prob_abc
+  result[2,2] <- Prob_ab
+  result[3,2] <- Prob_bc
+  result[4,2] <- Prob_a
+  result[5,2] <- Prob_c
+  result[6,2] <- NA
+  result[7,2] <- NA
+  
+  colnames(result) <- c("Estimate","p-value")
+  rownames(result) <- c("abc","ab","bc","a","c","b","d")
+  result<-as.data.frame(result)
+  return(result)
+}
+
+# model selection for linear model with distance as response
+#reference:
+SelectionDistResponseReg<-function (Dist_Matrix,X,Number_Permutations,alpha) {
+  X <- as.matrix(X)
+  Number_Predictors<-ncol(X)
+  n<-nrow(X)
+  Dist_Matrix <- as.matrix(Dist_Matrix)
+  X <- apply(X, 2, scale)
+  result<-DistResponseReg(Dist_Matrix,X);
+  F_Observed<-result$F_value
+  # global test with all predictors
+  Prob_Global<-1/Number_Permutations
+  for (i in 1:(Number_Permutations-1)) {
+    X_permuted<-X[sample(n,replace=FALSE),]
+    result<-DistResponseReg(Dist_Matrix,X_permuted)
+    F_Random<-result$F_value
+    if (F_Random >= F_Observed) {Prob_Global<-Prob_Global+1/Number_Permutations}
+  }
+  
+  # set of these as NA in the global model is not significant
+  Variables_In_Model <- NA
+  Rsq_Final_Model <- NA
+  if (Prob_Global < alpha) {
+    # calculate contribution of each predictor separately as they're orthgonal
+    F_Ind_X<-mat.or.vec(Number_Predictors,1)
+    for (i in 1:Number_Predictors) {
+      F_Ind_X[i]<-DistResponseReg(Dist_Matrix,X[,i])[2]
+    }
+    # start selection
+    Variables_In_Model<-as.matrix(which.max(F_Ind_X))
+    F_Ind_X[Variables_In_Model[1]]<-NA
+    #Original_Columns=as.matrix(1:n)
+    #Original_Columns[Variable_In_Model]<-NA
+    found <- FALSE
+    while (found == FALSE) { 
+      # this could be made faster by not calculating again the F for the first variable entered, but this version is more general
+      # contrast current model with the largest variable contribution not entered in the model
+      candidate_model <- cbind(X[,Variables_In_Model],X[,which.max(F_Ind_X)])
+      result_candidate <- DistResponseReg(Dist_Matrix,candidate_model)
+      F_candidate_Obs <- result_candidate[2]
+      # test wheter the entered variable improves fit
+      Prob_F <- 1/Number_Permutations
+      for (i in 1:(Number_Permutations-1)) {
+        candidate_predictor <- which.max(F_Ind_X)
+        candidate_model <- cbind(X[,Variables_In_Model],X[sample(n,replace=FALSE),candidate_predictor])
+        result_candidate <- DistResponseReg(Dist_Matrix,candidate_model);
+        F_candidate_Rnd <- result_candidate$F_value
+        if (F_candidate_Rnd >= F_candidate_Obs) {Prob_F<-Prob_F+1/Number_Permutations}
+      }
+      if (Prob_F > alpha) {found <- TRUE} else {
+        F_Ind_X[candidate_predictor] <- NA
+        Variables_In_Model <- append(Variables_In_Model,candidate_predictor)
+      }
+      
+      # nrow(na.omit(OriginalColumns))
+    }
+    result<-DistResponseReg(Dist_Matrix,X[,Variables_In_Model])
+    Rsq_Final_Model<-result$Rsq_Adj
+  }
+  
+  result <- list(Global_P=Prob_Global,Rsq_Selected_Model=Rsq_Final_Model,Selected_Variables=Variables_In_Model)
+  return(result)
+}
+
+##select pcnms using forward selection
+geo_sig_pcnm<-function(taxa_dist,geo.vars){
+  require(adespatial)
+  require(tidyr)
+  require(ape)
+  pcnm.geo <- pcnm(dist(geo.vars))
+  geo_sig_pcnm<-forward.sel(pcoa(taxa_dist)$vectors,pcnm.geo$vectors)
+  mm.Geography<-pcnm.geo$vectors[,geo_sig_pcnm$variables]
+  Geography.dist<-as.matrix(mm.Geography)
+  return(Geography.dist)
+}
+
+#Construct a variation partition function 
+vp <- function(phylo){
+  require(vegan)
+  siteXspe <- t(otu_table(phylo))
+  siteXspe <- as.matrix(siteXspe)
+  env <- sample_data(phylo)
+  #n=round(0.8*nrow(siteXspe))
+  #sample.seeds<-sample(1:nrow(siteXspe), n, replace=F)
+  #M <- siteXspe[sample.seeds,]
+  env_vars<-env[,-c(1:4)]
+  Geography_vars<-env[,c(1:2)]
+  abund_table<-decostand(siteXspe, 'hellinger',MARGIN = 1)
+  commu.dist<-vegdist(abund_table, 'bray',upper=F)
+  geo.dist<-geo_sig_pcnm(commu.dist,Geography_vars)
+  env_dist<-env_vars[,SelectionDistResponseReg(commu.dist,env_vars,999,0.05)$Selected_Variables]
+  vp<-VarPartDistResponse(commu.dist,env_dist,geo.dist,999)
+  results<-list(vp,env_dist,geo.dist)
+  return(results)
+}
+
+set.seed(123)
+vp.baceria<-vp(bac.phylo)
+vp.fungi<-vp(fungi.phylo)
+vp.protists<-vp(protist.phylo)
+vp.animal<-vp(animal.phylo)
+
+bacteria_vp<-vp.baceria[[1]]
+bacteia_env_dist<-vp.baceria[[2]]
+bacteia_geo_dist<-vp.baceria[[3]]
+colnames(bacteia_env_dist)
+colnames(bacteia_geo_dist)
+
+fungi_vp<-vp.fungi[[1]]
+fungi_env_dist<-vp.fungi[[2]]
+fungi_geo_dist<-vp.fungi[[3]]
+colnames(fungi_env_dist)
+colnames(fungi_geo_dist)
+
+protists_vp<-vp.protists[[1]]
+protists_env_dist<-vp.protists[[2]]
+protists_geo_dist<-vp.protists[[3]]
+colnames(protists_env_dist)
+colnames(protists_geo_dist)
+
+animal_vp<-vp.animal[[1]]
+animal_env_dist<-vp.animal[[2]]
+animal_geo_dist<-vp.animal[[3]]
+colnames(animal_env_dist)
+colnames(animal_geo_dist)
+
+#plot
+#first, variable partition plot
+theme_set(theme_grey())
+library(reshape)
+library(ggplot2)
+Sorting_effect=c(bacteria_vp[4,1],fungi_vp[4,1],protists_vp[4,1],animal_vp[4,1])*100
+dispersal_effect=c(bacteria_vp[5,1],fungi_vp[5,1],protists_vp[5,1],animal_vp[5,1])*100
+sorting.dispersal=c(bacteria_vp[6,1],fungi_vp[6,1],protists_vp[6,1],animal_vp[6,1])*100
+sort.dispersal.ration=c(Sorting_effect/dispersal_effect)
+vp.dat<-data.frame(taxa=c('Bacteria','Fungi','Protists','Animal'),Sorting_effect,
+                   dispersal_effect,sorting.dispersal,sort.dispersal.ration)
+vp.dat$taxa<-factor(vp.dat$taxa,ordered = T,
+                    levels=c('Bacteria','Protists','Animal','Fungi'))
+
+melted <- melt(vp.dat, id.vars=c("taxa"))
+
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+n = 4
+cols = gg_color_hue(n)
+cols16<-rep(cols,4)
+vp.plot<-ggplot(melted,aes(taxa,value)) + 
+  geom_bar(stat = 'identity',aes(fill=taxa))+
+  scale_fill_manual(values=cols)+
+  scale_x_discrete(limits=c('Bacteria','Protists','Animal','Fungi'))+
+  #scale_y_continuous(expand = c(0,0))+
+  facet_wrap( .~ variable , scales="free_y",ncol = 2) +
+  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
+        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+```
+
+## Partial mantel test
+```{r}
+#the relationship between geo dist with community dist after control env dist
+mantel.partial(geo_dist, bacteria.dis.tab[[2]], env_dist, method = "spearman")
+
+mantel.partial(geo_dist, fungi.dis.tab[[2]], env_dist, method = "spearman")
+
+mantel.partial(geo_dist, protist.dis.tab[[2]], env_dist, method = "spearman")
+
+mantel.partial(geo_dist, animal.dis.tab[[2]], env_dist, method = "spearman")
+
+#the relationship between env dist with community dist after control geo dist
+mantel.partial(env_dist, bacteria.dis.tab[[2]], geo_dist,method="spearman")
+
+mantel.partial(env_dist, fungi.dis.tab[[2]], geo_dist, method = "spearman")
+
+mantel.partial(env_dist, protist.dis.tab[[2]], geo_dist, method = "spearman")
+
+mantel.partial(env_dist, animal.dis.tab[[2]], geo_dist, method = "spearman")
+```
+
+# Neutral community model
+neutral community model for migration ratio
+```{r}
+Neutral.fit <- function(phylo, stats=TRUE){
+  comun <- as.matrix(t(otu_table(phylo)))
+  require(minpack.lm)
+  require(Hmisc)
+  require(stats4)
+  options(warn=-1)
+  
+  #Calculate the number of individuals per community
+  N <- mean(apply(comun, 1, sum))
+  
+  #Calculate the average relative abundance of each taxa across communities
+  p.m <- apply(comun, 2, mean)
+  p.m <- p.m[p.m != 0]
+  p <- p.m/N
+  
+  #Calculate the occurrence frequency of each taxa across communities
+  comun.bi <- 1*(comun>0)
+  freq <- apply(comun.bi, 2, mean)
+  freq <- freq[freq != 0]
+  
+  #Combine
+  C <- merge(p, freq, by=0)
+  C <- C[order(C[,2]),]
+  C <- as.data.frame(C)
+  C.0 <- C[!(apply(C, 1, function(y) any(y == 0))),]
+  p <- C.0[,2]
+  freq <- C.0[,3]
+  names(p) <- C.0[,1]
+  names(freq) <- C.0[,1]
+  
+  #Calculate the limit of detection
+  d = 1/N
+  
+  ##Fit model parameter m (or Nm) using Non-linear least squares (NLS)
+  m.fit <- nlsLM(freq ~ pbeta(d, N*m*p, N*m*(1-p), lower.tail=FALSE), start=list(m=0.1))
+  m.ci <- confint(m.fit, 'm', level=0.95)
+  
+  ##Fit neutral model parameter m (or Nm) using Maximum likelihood estimation (MLE)
+  sncm.LL <- function(m, sigma){
+    R = freq - pbeta(d, N*m*p, N*m*(1-p), lower.tail=FALSE)
+    R = dnorm(R, 0, sigma)
+    -sum(log(R))
+  }
+  m.mle <- mle(sncm.LL, start=list(m=0.1, sigma=0.1), nobs=length(p))
+  
+  ##Calculate Akaike's Information Criterion (AIC)
+  aic.fit <- AIC(m.mle, k=2)
+  bic.fit <- BIC(m.mle)
+  
+  ##Calculate goodness-of-fit (R-squared and Root Mean Squared Error)
+  freq.pred <- pbeta(d, N*coef(m.fit)*p, N*coef(m.fit)*(1-p), lower.tail=FALSE)
+  Rsqr <- 1 - (sum((freq - freq.pred)^2))/(sum((freq - mean(freq))^2))
+  RMSE <- sqrt(sum((freq-freq.pred)^2)/(length(freq)-1))
+  
+  pred.ci <- binconf(freq.pred*nrow(comun), nrow(comun), alpha=0.05, method="wilson", return.df=TRUE)
+  
+  ###create a dataframe for plot
+  bacnlsALL <-data.frame(p,freq,freq.pred,pred.ci[,2:3])
+  
+  ##Calculate AIC for binomial model
+  bino.LL <- function(mu, sigma){
+    R = freq - pbinom(d, N, p, lower.tail=FALSE)
+    R = dnorm(R, mu, sigma)
+    -sum(log(R))
+  }
+  bino.mle <- mle(bino.LL, start=list(mu=0, sigma=0.1), nobs=length(p))
+  
+  aic.bino <- AIC(bino.mle, k=2)
+  bic.bino <- BIC(bino.mle)
+  
+  ##Goodness of fit for binomial model
+  bino.pred <- pbinom(d, N, p, lower.tail=FALSE)
+  Rsqr.bino <- 1 - (sum((freq - bino.pred)^2))/(sum((freq - mean(freq))^2))
+  RMSE.bino <- sqrt(sum((freq - bino.pred)^2)/(length(freq) - 1))
+  
+  bino.pred.ci <- binconf(bino.pred*nrow(comun), nrow(comun), alpha=0.05, method="wilson", return.df=TRUE)
+  
+  ##Results
+  if(stats==TRUE){
+    fitstats <- data.frame(m=numeric(), m.ci=numeric(), m.mle=numeric(), maxLL=numeric(), binoLL=numeric(), Rsqr=numeric(), Rsqr.bino=numeric(), RMSE=numeric(), RMSE.bino=numeric(), AIC=numeric(), BIC=numeric(), AIC.bino=numeric(), BIC.bino=numeric(), N=numeric(), Samples=numeric(), Richness=numeric(), Detect=numeric())
+    fitstats[1,] <- c(coef(m.fit), coef(m.fit)-m.ci[1], m.mle@coef['m'], m.mle@details$value, bino.mle@details$value, Rsqr, Rsqr.bino, RMSE, RMSE.bino, aic.fit, bic.fit, aic.bino, bic.bino, N, nrow(comun), length(p), d)
+    results1=list(fitstats,bacnlsALL,m.fit,N)
+    return(results1)
+  } else {
+    A <- cbind(p, freq, freq.pred, pred.ci[,2:3], bino.pred, bino.pred.ci[,2:3])
+    A <- as.data.frame(A)
+    colnames(A) <- c('p', 'freq', 'freq.pred', 'pred.lwr', 'pred.upr', 'bino.pred', 'bino.lwr', 'bino.upr')
+    B <- A[order(A[,1]),]
+    results2=list(B,bacnlsALL,m.fit,N)
+    return(results2)
+  }
+}
+Neutral.bacteria.model<-Neutral.fit(bac.phylo)
+Neutral.fungi.model<-Neutral.fit(fungi.phylo)
+Neutral.protists.model<-Neutral.fit(protist.phylo)
+Neutral.animal.model<-Neutral.fit(animal.phylo)
+
+All.neutral.models<-cbind(taxa=c('Bacteria','Fungi','Protists','Animal'),
+                          rbind(Neutral.bacteria.model[[1]],Neutral.fungi.model[[1]],
+                                Neutral.protists.model[[1]],Neutral.animal.model[[1]]))
+All.neutral.models
+
+bacteria.bacnlsALL<-Neutral.bacteria.model[[2]]
+fungi.bacnlsALL<-Neutral.fungi.model[[2]]
+protists.bacnlsALL<-Neutral.protists.model[[2]]
+animal.bacnlsALL<-Neutral.animal.model[[2]]
+
+##
+bacteria.lower<-subset(bacteria.bacnlsALL,bacteria.bacnlsALL$freq <= bacteria.bacnlsALL$Lower)
+bacteria.neutral<-subset(bacteria.bacnlsALL,bacteria.bacnlsALL$freq >= bacteria.bacnlsALL$Lower & bacteria.bacnlsALL$freq <= bacteria.bacnlsALL$Upper)
+bacteria.Upper<-subset(bacteria.bacnlsALL,bacteria.bacnlsALL$freq >= bacteria.bacnlsALL$Upper)
+
+##
+fungi.lower<-subset(fungi.bacnlsALL,fungi.bacnlsALL$freq <= fungi.bacnlsALL$Lower)
+fungi.neutral<-subset(fungi.bacnlsALL,fungi.bacnlsALL$freq >= fungi.bacnlsALL$Lower & fungi.bacnlsALL$freq <= fungi.bacnlsALL$Upper)
+fungi.Upper<-subset(fungi.bacnlsALL,fungi.bacnlsALL$freq >= fungi.bacnlsALL$Upper)
+
+##
+protists.lower<-subset(protists.bacnlsALL,protists.bacnlsALL$freq <= protists.bacnlsALL$Lower)
+protists.neutral<-subset(protists.bacnlsALL,protists.bacnlsALL$freq >= protists.bacnlsALL$Lower & protists.bacnlsALL$freq <= protists.bacnlsALL$Upper)
+protists.Upper<-subset(protists.bacnlsALL,protists.bacnlsALL$freq >= protists.bacnlsALL$Upper)
+
+##
+animal.lower<-subset(animal.bacnlsALL,animal.bacnlsALL$freq <= animal.bacnlsALL$Lower)
+animal.neutral<-subset(animal.bacnlsALL,animal.bacnlsALL$freq >= animal.bacnlsALL$Lower & animal.bacnlsALL$freq <= animal.bacnlsALL$Upper)
+animal.Upper<-subset(animal.bacnlsALL,animal.bacnlsALL$freq >= animal.bacnlsALL$Upper)
+
+# plot
+draw.fun<-function(Neutral.model){
+  bacnlsALL=Neutral.model[[2]]
+  m.fit=Neutral.model[[3]]
+  N=Neutral.model[[4]]
+  inter.col<-rep('pink',nrow(bacnlsALL))
+  inter.col[bacnlsALL$freq <= bacnlsALL$Lower]<-'#A52A2A'#define the color of below points
+  inter.col[bacnlsALL$freq >= bacnlsALL$Upper]<-'#29A6A6'#define the color of up points
+  library(grid)
+  grid.newpage()
+  pushViewport(viewport(h=0.6,w=0.6))
+  pushViewport(dataViewport(xData=range(log10(bacnlsALL$p)), yData=c(0,1.02),extension=c(0.02,0)))
+  grid.rect()
+  grid.points(log10(bacnlsALL$p), bacnlsALL$freq,pch=20,gp=gpar(col=inter.col,cex=0.7))
+  grid.yaxis()
+  grid.xaxis()
+  grid.lines(log10(bacnlsALL$p),bacnlsALL$freq.pred,gp=gpar(col='blue',lwd=2),default='native')
+  
+  grid.lines(log10(bacnlsALL$p),bacnlsALL$Lower ,gp=gpar(col='blue',lwd=2,lty=2),default='native') 
+  grid.lines(log10(bacnlsALL$p),bacnlsALL$Upper,gp=gpar(col='blue',lwd=2,lty=2),default='native')  
+  grid.text(y=unit(0,'npc')-unit(2.5,'lines'),label='Mean Relative Abundance (log10)', gp=gpar(fontface=2)) 
+  grid.text(x=unit(0,'npc')-unit(3,'lines'),label='Frequency of Occurance',gp=gpar(fontface=2),rot=90) 
+  #grid.text(x=unit(0,'npc')-unit(-1,'lines'), y=unit(0,'npc')-unit(-15,'lines'),label='Mean Relative Abundance (log)', gp=gpar(fontface=2)) 
+  #grid.text(round(coef(m.fit)*N),x=unit(0,'npc')-unit(-5,'lines'), y=unit(0,'npc')-unit(-15,'lines'),gp=gpar(fontface=2)) 
+  #grid.text(label = "Nm=",x=unit(0,'npc')-unit(-3,'lines'), y=unit(0,'npc')-unit(-15,'lines'),gp=gpar(fontface=2))
+  #grid.text(round(Rsqr,2),x=unit(0,'npc')-unit(-5,'lines'), y=unit(0,'npc')-unit(-16,'lines'),gp=gpar(fontface=2))
+  #grid.text(label = "Rsqr=",x=unit(0,'npc')-unit(-3,'lines'), y=unit(0,'npc')-unit(-16,'lines'),gp=gpar(fontface=2))
+  Rsqr <- 1 - (sum((bacnlsALL$freq - bacnlsALL$freq.pred)^2))/(sum((bacnlsALL$freq - mean(bacnlsALL$freq))^2))
+  draw.text <- function(just, i, j) {
+    grid.text(paste("Rsqr=",round(Rsqr,3),"\n","Nm=",round(coef(m.fit)*N)), x=x[j], y=y[i], just=just)
+    #grid.text(deparse(substitute(just)), x=x[j], y=y[i] + unit(2, "lines"),
+    #          gp=gpar(col="grey", fontsize=8))
+  }
+  x <- unit(1:4/5, "npc")
+  y <- unit(1:4/5, "npc")
+  draw.text(c("centre", "bottom"), 4, 1)
+}
+
+draw.fun(Neutral.bacteria.model)
+draw.fun(Neutral.fungi.model)
+draw.fun(Neutral.protists.model)
+draw.fun(Neutral.animal.model)
+
+```
+
+# Nich analysis
+```{r}
+Com.niche <- function(phylo, stats=TRUE){
+  require(spaa)
+  comun <- t(data.frame(otu_table(phylo)))
+  comun<-comun[,colSums(comun)>0]
+  B<-niche.width(comun,method="levins")
+  B_com<-1:nrow(comun)
+  for(i in 1:nrow(comun)){
+    a<-comun[i,]
+    a<-a[a>0]
+    B_com[i]<-mean(as.numeric(B[,names(a)]))
+  }
+  return(B_com)
+}
+
+bacteria.niche<-Com.niche(bac.phylo)
+fungi.niche<-Com.niche(fungi.phylo)
+protists.niche<-Com.niche(protist.phylo)
+animal.niche<-Com.niche(animal.phylo)
+
+library(reshape)
+library(plyr)
+meta.niche<-data.frame(sample=c(1:147),Bacteria=bacteria.niche,
+                       Fungi=fungi.niche,Protists=protists.niche,
+                       Animal=animal.niche,stringsAsFactors = F)
+melted <- melt(meta.niche, id.vars=c("sample"))
+
+ddply(melted, c("variable"), summarise,
+      mean = mean(value), sd = sd(value),
+      se = sd(value)/sqrt(length(value)))
+
+mode_ln<-aov(value~variable,melted)
+summary(mode_ln)
+TukeyHSD(mode_ln)$variable
+
+#then, niche plot
+melted$variable<-factor(melted$variable,ordered = T,levels = c('Bacteria','Protists','Animal','Fungi'))
+
+
+niche.p<-ggplot(melted,aes(x=variable,y=value))+
+  geom_violin(trim=T,aes(fill=variable))+
+  scale_fill_manual(values=cols)+
+  geom_boxplot(width=0.1,fill='white')+
+  ylab('Habitat niche breadth (Bcom)')+
+  scale_x_discrete(limits=c('Bacteria','Protists','Animal','Fungi'))+
+  theme(axis.title.x = element_blank(),axis.title.y = element_text(size=11),
+        axis.text = element_text(size=9),
+        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+
+#migration ratio plot
+m<-data.frame(taxa=c('Bacteria','Fungi','Protists','Animal'),
+              m=c(0.612253,0.103691,0.350818,0.101444))
+m$taxa<-factor(m$taxa,ordered = T,levels = c('Bacteria','Protists','Animal','Fungi'))
+m.plot<-ggplot(m,aes(x=taxa, y=m,group = 1)) +
+  geom_bar(stat = 'identity',aes(fill=taxa))+
+  scale_fill_manual(values=cols)+
+  xlab('Taxa')+ylab('Migration ratio')+
+  scale_x_discrete(limits=c('Bacteria','Protists','Animal','Fungi'))+
+  theme(axis.title = element_text(size=11),
+        axis.text = element_text(size=9),
+        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+
+#combine all plots
+library(cowplot)
+
+ggdraw() +
+  draw_plot(vp.plot, x =0, y = 0, width = 0.65, height = 1) +
+  draw_plot(niche.p, x = 0.65, y = 0.5, width = .35, height = .5) +
+  draw_plot(m.plot, x = 0.65, y = 0, width = .35, height = .5) +
+  draw_plot_label(label = c("(a)", "(b)", "(c)"), size = 11,
+                  x = c(0, 0.65, 0.65), y = c(1, 1, 0.5))
+```
+
+# NST
+Determine the NST of each taxa
+```{r}
+nst.cal <- function(phylo) {
+  require(NST)
+  group<-data.frame(c(rep('all',147)))
+  comm=t(otu_table(phylo))
+  rownames(group)<-rownames(comm)
+  tnst=tNST(comm, group=group, dist.method="jaccard",
+                     abundance.weighted=TRUE, rand=100,output.rand = T,
+                     nworker=4, null.model="PF", between.group=F,
+                     SES=T, RC=T)
+  nst.bt=nst.boot(nst.result=tnst, group=NULL, rand=99,
+                           trace=TRUE, two.tail=FALSE, out.detail=T,
+                           between.group=FALSE, nworker=1)
+  NST <- nst.bt$detail$NST.boot$all
+  
+}
+
+NST.bacteria <- nst.cal(bac.phylo)
+NST.fungi <- nst.cal(fungi.phylo)
+NST.protist <- nst.cal(protist.phylo)
+NST.animal <- nst.cal(animal.phylo)
+
+nst<-data.frame(Taxa=c(rep('Bacteria',100),rep('Fungi',100),
+                       rep('Protists',100),rep('Animal',100)),
+                NST=c(NST.bacteria,NST.fungi,NST.protist,NST.animal))
+
+
+#Multiple comparison
+library(plyr)
+ddply(nst, c("Taxa"), summarise,
+      mean = mean(NST), sd = sd(NST),
+      se = sd(NST)/sqrt(length(NST)))
+nst.aov <- aov(NST ~ Taxa, data = nst)
+TukeyHSD(nst.aov)
+
+#plot
+library(ggplot2)
+nst$Taxa<-factor(nst$Taxa,ordered = T,levels = c('Bacteria','Protists','Animal','Fungi'))
+nst.p<-ggplot(nst,aes(x=Taxa,y=NST*100))+
+  geom_violin(trim=T,aes(fill=Taxa))+
+  scale_fill_manual(values=cols)+
+  geom_boxplot(width=0.1,fill='white')+
+  xlab('Taxa')+ylab('NST (%)')+
+  scale_x_discrete(limits=c('Bacteria','Protists','Animal','Fungi'))+
+  theme(axis.title = element_text(size=12),axis.text = element_text(size=11),
+        legend.position='none',panel.grid = element_blank())
+nst.p
+```
+
+# Phylogenetic and null model analysis
+filter.rel <- function(comun) {
+  comun <- t(comun)
+  ra <-rowSums(comun)/sum(comun)
+  otu_tab<- comun[ra >= 0.0005, ]
+  otu_tab <- data.frame(t(otu_tab))
+  return(otu_tab)
+}
+  
+env_table<-read.csv('E:/147samples未抽平/network/147env.csv',header=TRUE,row.names=1,stringsAsFactors = FALSE)
+#Just a check to ensure that the samples in meta_table are in the same order as in abund_table
+env_table[1:5,1:5]
+
+#读取细菌的OTU表格
+otu_bacteria<-read.csv("E:/147samples未抽平/4taxa_otutable/otu_bacteria.csv",header=TRUE,row.names=1,stringsAsFactors = FALSE)
+filter.bac.tab <- filter.rel(otu_bacteria)
+ncol(filter.bac.tab)
+library(ape)
+OTU_tree <- read.tree("E:/147samples未抽平/tree/bacteria/rep_set.tre")
+tips<-colnames(filter.bac.tab)
+bacteria.tree<-keep.tip(OTU_tree,tips)
+
+######读取真菌的OTU表格#####
+#读取真菌的OTU表格
+otu_fungi<-read.csv("E:/147samples未抽平/4taxa_otutable/otu_fungi.csv",header=TRUE,row.names=1,stringsAsFactors = FALSE)
+filter.fun.tab <- filter.rel(otu_fungi)
+ncol(filter.fun.tab)
+library(ape)
+OTU_tree <- read.tree("E:/147samples未抽平/tree/fungi/rep_set.fna.tre.tre")
+tips<-colnames(filter.fun.tab)
+fungi.tree<-keep.tip(OTU_tree,tips)
+
+#读取原生生物的OTU表格
+otu_protists<-read.csv("E:/147samples未抽平/4taxa_otutable/otu_protists.csv",header=TRUE,row.names=1,stringsAsFactors = FALSE)
+filter.proti.tab <- filter.rel(otu_protists)
+ncol(filter.proti.tab)
+#读取土壤动物的OTU表格
+otu_animal<-read.csv("E:/147samples未抽平/4taxa_otutable/otu_animal.csv",header=TRUE,row.names=1,stringsAsFactors = FALSE)
+filter.anim.tab <- filter.rel(otu_animal)
+ncol(filter.anim.tab)
+library(ape)
+OTU_tree <- read.tree("E:/147samples未抽平/tree/protists/rep_set.tre")
+protists.tips<-colnames(filter.proti.tab)
+protists.tree<-keep.tip(OTU_tree,protists.tips)
+animal.tips<-colnames(filter.anim.tab)
+animal.tree<-keep.tip(OTU_tree,animal.tips)
+
+#MPD.WEIGHTED.ABUNDANCE
+library(picante)
+bacteria.mpd.a<-mpd(otu_bacteria,cophenetic(bacteria.tree),abundance.weighted = T)
+fungi.mpd.a<-mpd(otu_fungi,cophenetic(fungi.tree),abundance.weighted = T)
+protists.mpd.a<-mpd(otu_protists,cophenetic(protists.tree),abundance.weighted = T)
+animal.mpd.a<-mpd(otu_animal,cophenetic(animal.tree),abundance.weighted = T)
+
+
+#se.mntd
+ses.mntd.bacteria <- ses.mntd(otu_bacteria, cophenetic(bacteria.tree), 
+                              null.model="taxa.labels",abundance.weighted=T, runs=99)
+
+results.bacteria<-data.frame(groups=c(rep('All',147),env_table$Biome),
+                             mpd.obs.z=c(ses.mntd.bacteria$mpd.obs.z,ses.mntd.bacteria$mpd.obs.z),
+                             mntd.obs.z=c(ses.mntd.bacteria$mntd.obs.z,ses.mntd.bacteria$mntd.obs.z),stringsAsFactors = F)
+
+ses.mntd.fungi <- ses.mntd(otu_fungi, cophenetic(fungi.tree), 
+                           null.model="taxa.labels",abundance.weighted=T, runs=99)
+ses.mntd.protists <- ses.mntd(otu_protists, cophenetic(protists.tree), 
+                              null.model="taxa.labels",abundance.weighted=T, runs=99)
+ses.mntd.animal <- ses.mntd(otu_animal, cophenetic(animal.tree), 
+                            null.model="taxa.labels",abundance.weighted=T, runs=99)
+
+#### R codes for null model analysis modified according to Stegen et al. (2013) ####
+#phylo: Phylogenetic tree of each OTU
+#comun: A community table with samples as rows and OTUs as columns. 
+#Beta_NTI
+Beta_NTI<-function(tree,comun){
+  require(picante)
+  ## make sure the names on the phylogeny are ordered the same as the names in otu table
+  match.phylo.comun = match.phylo.data(tree, t(comun));
+  ## calculate empirical betaMNTD
+  beta.mntd.weighted = as.matrix(comdistnt(t(match.phylo.comun$data),cophenetic(match.phylo.comun$phy),abundance.weighted=T));
+  identical(colnames(match.phylo.comun$data),colnames(beta.mntd.weighted)); # just a check, should be TRUE
+  identical(colnames(match.phylo.comun$data),rownames(beta.mntd.weighted)); # just a check, should be TRUE
+  # calculate randomized betaMNTD
+  beta.reps = 999; # number of randomizations
+  rand.weighted.bMNTD.comp = array(c(-999),dim=c(ncol(match.phylo.comun$data),ncol(match.phylo.comun$data),beta.reps));
+  for (rep in 1:beta.reps) {
+    rand.weighted.bMNTD.comp[,,rep] = as.matrix(comdistnt(t(match.phylo.comun$data),
+                                                          taxaShuffle(cophenetic(match.phylo.comun$phy)),
+                                                          abundance.weighted = T,exclude.conspecifics = F));
+    print(c(date(),rep));
+  }
+  weighted.bNTI = matrix(c(NA),nrow=ncol(match.phylo.comun$data),ncol=ncol(match.phylo.comun$data));
+  dim(weighted.bNTI);
+  for (columns in 1:(ncol(match.phylo.comun$data)-1)) {
+    for (rows in (columns+1):ncol(match.phylo.comun$data)) {
+      
+      rand.vals = rand.weighted.bMNTD.comp[rows,columns,];
+      weighted.bNTI[rows,columns] = (beta.mntd.weighted[rows,columns] - mean(rand.vals)) / sd(rand.vals);
+      rm("rand.vals");
+    };
+  };
+  rownames(weighted.bNTI) = colnames(match.phylo.comun$data);
+  colnames(weighted.bNTI) = colnames(match.phylo.comun$data);
+  results<-as.dist(weighted.bNTI);
+  return(results)
+}
+
+
+#RC_bray
+raup_crick= function(comun, reps=999){
+  require(ecodist) 
+  ## count number of sites and total species richness across all plots (gamma)
+  n_sites<-nrow(comun)
+  gamma<-ncol(comun)
+  ##build a site by site matrix for the results, with the names of the sites in the row and col names:
+  results<-matrix(data=NA, nrow=n_sites, ncol=n_sites, dimnames=list(row.names(comun), row.names(comun)))
+  ##make the comun matrix into a new, pres/abs. matrix:
+  ceiling(comun/max(comun))->comun.inc
+  ##create an occurrence vector- used to give more weight to widely distributed species in the null model:
+  occur<-apply(comun.inc, MARGIN=2, FUN=sum)
+  ##create an abundance vector- used to give more weight to abundant species in the second step of the null model:
+  abundance<-apply(comun, MARGIN=2, FUN=sum)
+  ##make_null:
+  ##looping over each pairwise community combination:
+  for(null.one in 1:(nrow(comun)-1)){
+    for(null.two in (null.one+1):nrow(comun)){
+      null_bray_curtis<-NULL
+      for(i in 1:reps){
+        ##two empty null communities of size gamma:
+        com1<-rep(0,gamma)
+        com2<-rep(0,gamma)
+        ##add observed number of species to com1, weighting by species occurrence frequencies:
+        com1[sample(1:gamma, sum(comun.inc[null.one,]), replace=FALSE, prob=occur)]<-1
+        com1.samp.sp = sample(which(com1>0),(sum(comun[null.one,])-sum(com1)),replace=TRUE,prob=abundance[which(com1>0)]);
+        com1.samp.sp = cbind(com1.samp.sp,1); # head(com1.samp.sp);
+        com1.sp.counts = as.data.frame(tapply(com1.samp.sp[,2],com1.samp.sp[,1],FUN=sum)); colnames(com1.sp.counts) = 'counts'; # head(com1.sp.counts);
+        com1.sp.counts$sp = as.numeric(rownames(com1.sp.counts)); # head(com1.sp.counts);
+        com1[com1.sp.counts$sp] = com1[com1.sp.counts$sp] + com1.sp.counts$counts; # com1;
+        #sum(com1) - sum(spXsite[null.one,]); ## this should be zero if everything work properly
+        rm('com1.samp.sp','com1.sp.counts');			
+        ##same for com2:
+        com2[sample(1:gamma, sum(comun.inc[null.two,]), replace=FALSE, prob=occur)]<-1
+        com2.samp.sp = sample(which(com2>0),(sum(comun[null.two,])-sum(com2)),replace=TRUE,prob=abundance[which(com2>0)]);
+        com2.samp.sp = cbind(com2.samp.sp,1); # head(com2.samp.sp);
+        com2.sp.counts = as.data.frame(tapply(com2.samp.sp[,2],com2.samp.sp[,1],FUN=sum)); colnames(com2.sp.counts) = 'counts'; # head(com2.sp.counts);
+        com2.sp.counts$sp = as.numeric(rownames(com2.sp.counts)); # head(com2.sp.counts);
+        com2[com2.sp.counts$sp] = com2[com2.sp.counts$sp] + com2.sp.counts$counts; # com2;
+        # sum(com2) - sum(spXsite[null.two,]); ## this should be zero if everything work properly
+        rm('com2.samp.sp','com2.sp.counts');
+        null.comun = rbind(com1,com2); # null.comun;
+        ##calculate null bray curtis
+        null_bray_curtis[i] = distance(null.comun,method='bray-curtis');
+      }; # end reps loop
+      ## empirically observed bray curtis
+      obs.bray = distance(comun[c(null.one,null.two),],method='bray-curtis');
+      ##how many null observations is the observed value tied with?
+      num_exact_matching_in_null = sum(null_bray_curtis==obs.bray);
+      ##how many null values are smaller than the observed *dissimilarity*?
+      num_less_than_in_null = sum(null_bray_curtis<obs.bray);
+      rc = ((num_less_than_in_null +(num_exact_matching_in_null)/2)/reps)
+      ##modification of raup crick standardizes the metric to range from -1 to 1 instead of 0 to 1
+      rc = (rc-.5)*2
+      results[null.two,null.one] = round(rc,digits=2); ##store the metric in the results matrix
+      print(c(null.one,null.two,date()));
+    }; ## end null.two loop
+  }; ## end null.one loop
+  
+  results<-as.dist(results)
+  return(results)
+}
+
+
+
+#计算各个taxa的Beta_NTI指数
+Beta_NTI_bacteria<-Beta_NTI(bacteria.tree, filter.bac.tab)
+write.csv(Beta_NTI_bacteria,"E:/147samples/results/零模型/bacteria.unweighted_bNTI20210417_0.05.csv",quote=F);
+
+Beta_NTI_fungi<-Beta_NTI(fungi.tree, filter.fun.tab)
+write.csv(Beta_NTI_fungi,"E:/147samples/results/零模型/fungi.unweighted_bNTI20210417.csv",quote=F);
+
+Beta_NTI_protists<-Beta_NTI(protists.tree, filter.proti.tab)
+write.csv(Beta_NTI_protists,"E:/147samples/results/零模型/protists.unweighted_bNTI20210408.csv",quote=F);
+
+Beta_NTI_animal<-Beta_NTI(animal.tree, filter.anim.tab)
+write.csv(b_NTI_animal,"E:/147samples/results/零模型/animal.unweighted_bNTI20210408.csv",quote=F);
+
+library(NST)
+b_NTI_animal3col<-dist.3col(Beta_NTI_animal)
+write.csv(b_NTI_animal3col,"E:/147samples未抽平/tree/animal/animal.unweighted_bNTI_未抽平3col.csv",quote=F);
+
+
+
+
+#计算各个taxa的rcbray指数
+rcbray_bacteria<-raup_crick(filter.bac.tab)
+write.csv(rcbray_bacteria,"E:/147samples未抽平/tree/bacteria/raup_crick_bacteria20210417_0.05.csv",quote=F);
+
+rcbray_fungi<-raup_crick(filter.fun.tab)
+write.csv(rcbray_fungi,"E:/147samples未抽平/tree/fungi/raup_crick_fungi20210408.csv",quote=F);
+
+rcbray_protists<-raup_crick(filter.proti.tab)
+write.csv(rcbray_protists,"E:/147samples未抽平/tree/protists/raup_crick_protists20210408.csv",quote=F);
+
+rcbray_animal<-raup_crick(filter.anim.tab)
+write.csv(rcbray_animal,"E:/147samples未抽平/tree/animal/raup_crick_animal20210408.csv",quote=F);
+
+
+null.index<-function(bNTI.df,rcbray.df){
+  bnti_mat <- as.matrix(bNTI.df)
+  bNTI.mat<-matrix(0,nrow = 147,ncol = 147)
+  bNTI.mat[lower.tri(bNTI.mat)] <- bnti_mat[lower.tri(bnti_mat, diag=TRUE)]
+  bNTI.dist<-as.dist(bNTI.mat)
+  #
+  rcbray.mat <- as.matrix(rcbray.df)
+  RC.mat<-matrix(0,nrow = 147,ncol = 147)
+  RC.mat[lower.tri(RC.mat)] <- rcbray.mat [lower.tri(rcbray.mat, diag=TRUE)]
+  RC.dist<-as.dist(RC.mat)
+  library(NST)
+  null.value<-cbind(dist.3col(bNTI.dist),dist.3col(RC.dist)[3])
+  colnames(null.value)<-c('name1','name2','bNTI','RC_bray')
+  homogeneous_selection<-nrow(subset(null.value,bNTI>2))
+  heterogeneous_selection<-nrow(subset(null.value,bNTI<(-2)))
+  dispersal_limitation<-nrow(subset(null.value,bNTI<2 & bNTI>(-2) & RC_bray>0.95))
+  homogenizing_dispersal<-nrow(subset(null.value,bNTI<2 & bNTI>(-2) & RC_bray<(-0.95)))
+  undominated<-nrow(subset(null.value,bNTI<2 & bNTI>(-2) & RC_bray<0.95 & RC_bray>(-0.95)))
+  null.pro<-data.frame(homogeneous_selection,heterogeneous_selection,dispersal_limitation,
+                       homogenizing_dispersal,undominated)
+  process<-colnames(null.pro)
+  Proportion<-as.numeric(null.pro[1,]/sum(null.pro[1,]))
+  df<-data.frame(process,Proportion)
+  return(df)
+}
+
+#计算各个生态过程的相对重要性
+
+Beta_NTI_bacteria<-read.csv("E:/147samples未抽平/零模型/bNTI/bacteria.weighted_bNTI.csv",header=T,row.names=1,stringsAsFactors=F);
+rcbray_bacteria<-read.csv("E:/147samples未抽平/零模型/RC_bray/rc.bacteria.csv",header=T,row.names=1,stringsAsFactors=F);
+
+Beta_NTI_fungi<-read.csv("E:/147samples未抽平/零模型/bNTI/fungi.weighted_bNTI.csv",header=T,row.names=1,stringsAsFactors=F);
+rcbray_fungi<-read.csv("E:/147samples未抽平/零模型/RC_bray/rc.fungi.csv",header=T,row.names=1,stringsAsFactors=F);
+
+Beta_NTI_protists<-read.csv("E:/147samples未抽平/零模型/bNTI/protists.weighted_bNTI.csv",header=T,row.names=1,stringsAsFactors=F);
+rcbray_protists<-read.csv("E:/147samples未抽平/零模型/RC_bray/rc.protists.csv",header=T,row.names=1,stringsAsFactors=F);
+
+Beta_NTI_animal<-read.csv("E:/147samples未抽平/零模型/bNTI/animal.weighted_bNTI.csv",header=T,row.names=1,stringsAsFactors=F);
+rcbray_animal<-read.csv("E:/147samples未抽平/零模型/RC_bray/rc.animal.csv",header=T,row.names=1,stringsAsFactors=F);
+
+
+bacteria.null<-null.index(Beta_NTI_bacteria,rcbray_bacteria)
+fungi.null<-null.index(Beta_NTI_fungi,rcbray_fungi)
+protists.null<-null.index(Beta_NTI_protists,rcbray_protists)
+animal.null<-null.index(Beta_NTI_animal,rcbray_animal)
+
+#作图
+doughnut.plot<-function(data){
+  # load library
+  library(ggplot2)
+  library(dplyr)
+  # Compute percentages
+  
+  data$prop <- round(data$count / sum(data$count),3)
+  
+  count.data <- data %>%
+    arrange(desc(process)) %>%
+    mutate(lab.ypos = cumsum(prop) - 0.5*prop)
+  
+  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF",'#009E73')
+  # Make the plot
+  p<-ggplot(count.data, aes(x = 2, y = prop, fill = process)) +
+    geom_bar(stat = "identity", color = "white") +
+    coord_polar(theta = "y", start = 0)+
+    geom_text(aes(y = lab.ypos, label = prop), color = "white")+
+    scale_fill_manual(values = mycols) +
+    theme_void()+
+    xlim(0.5, 2.5)
+  return(p)
+}
+
+B.doug<-doughnut.plot(bacteria.null)
+F.doug<-doughnut.plot(fungi.null)
+P.doug<-doughnut.plot(protists.null)
+A.doug<-doughnut.plot(animal.null)
+
+
+
+library(cowplot)
+plot_grid(B.doug,F.doug,P.doug,A.doug,
+          labels = "auto", ncol = 2, nrow = 2, label_x = .01, 
+          label_y = 1.005,hjust = 0, label_size=17,align = "v")
+
+
+null.3col<-function(bNTI.df){
+  bnti_mat <- as.matrix(bNTI.df)
+  bNTI.mat<-matrix(0,nrow = 147,ncol = 147)
+  bNTI.mat[lower.tri(bNTI.mat)] <- bnti_mat[lower.tri(bnti_mat, diag=TRUE)]
+  bNTI.dist<-as.dist(bNTI.mat)
+  library(NST)
+  null.value<-dist.3col(bNTI.dist)
+  colnames(null.value)<-c('name1','name2','bNTI')
+  return(null.value)
+}
+
+bNTI_bacteria<-null.3col(Beta_NTI_bacteria)
+bNTI_fungi<-null.3col(Beta_NTI_fungi)
+bNTI_protists<-null.3col(Beta_NTI_protists)
+bNTI_animal<-null.3col(Beta_NTI_animal)
+
+
+
+#density plot with diversity indexes
+
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+n = 4
+cols = gg_color_hue(n)
+
+
+#Density Plot
+density_plot<-function(x,cols){
+  hist(x, # histogram
+       col=cols, # column color
+       border="black",
+       prob = F, # show densities instead of frequencies
+       main=NULL,
+       cex.lab=1, cex.axis=0.8)
+  #lines(x, # density plot
+  #lwd = 2, # thickness of line
+  #col = "chocolate3")
+  #abline(v=c(-2,2), col=c("blue", "blue"), lty=c(1,1), lwd=c(3, 3))
+}
+
+opar<-par(no.readonly = T)
+par(mfrow=c(2,2))
+density_plot(bNTI_bacteria$bNTI,cols[1])
+density_plot(bNTI_fungi$bNTI,cols[4])
+density_plot(bNTI_protists$bNTI,cols[2])
+density_plot(bNTI_animal$bNTI,cols[3])
+par(opar)
+
+
+
+
+library(ggplot2)
+B.plot<-ggplot(bNTI_bacteria,aes(x=bNTI)) +
+  geom_density( alpha = 0.5,size=1,color='purple2', fill='purple2')+
+  theme_classic()
+
+F.plot<-ggplot(bNTI_fungi, aes(x=bNTI)) +
+  geom_density( alpha = 0.5,size=1,color='green4', fill='green4')+
+  theme_classic()
+
+P.plot<-ggplot(bNTI_protists, aes(x=bNTI)) +
+  geom_density( alpha = 0.5,size=1,color='orange1', fill='orange1')+
+  theme_classic()
+
+A.plot<-ggplot(bNTI_animal, aes(x=bNTI)) +
+  geom_density( alpha = 0.5,size=1,color='skyblue2', fill='skyblue2')+
+  theme_classic()
+
+library(cowplot)
+#pdf("E:/147samples未抽平/abundance_distribution1.pdf",width=10,height=12)
+plot_grid(B.plot,F.plot,P.plot,A.plot,
+          labels = NULL, ncol = 2, nrow = 2, label_x = .01, label_y = 0.99,
+          hjust = 0, label_size=17,align = "v")
+#dev.off()
+
+
+#density plot with diversity indexes
+
+gg_color_hue <- function(n) {
+  hues = seq(15, 375, length = n + 1)
+  hcl(h = hues, l = 65, c = 100)[1:n]
+}
+n = 4
+cols = gg_color_hue(n)
+
+
+#Density Plot
+density_plot<-function(x,cols){
+  hist(x, # histogram
+       col=cols, # column color
+       border="black",
+       prob = F, # show densities instead of frequencies
+       main=NULL,
+       cex.lab=1.7, cex.axis=1.7, cex.main=1.7)
+  #lines(x, # density plot
+  #lwd = 2, # thickness of line
+  #col = "chocolate3")
+  #abline(v=c(-2,2), col=c("blue", "blue"), lty=c(1,1), lwd=c(3, 3))
+}
+
+opar<-par(no.readonly = T)
+par(mfrow=c(2,2))
+density_plot(bNTI_bacteria$bNTI,cols[1])
+density_plot(bNTI_protists$bNTI,cols[2])
+density_plot(bNTI_animal$bNTI,cols[3])
+density_plot(bNTI_fungi$bNTI,cols[4])
+par(opar)
+
+
+bNTI_all<-data.frame(taxa=c(rep('Bacteria',nrow(bNTI_bacteria)),
+                                rep('Fungi',nrow(bNTI_fungi)),
+                                rep('Protists',nrow(bNTI_protists)),
+                                rep('Animal',nrow(bNTI_animal))),
+                     rbind(bNTI_bacteria,bNTI_fungi,bNTI_protists,bNTI_animal))
+bNTI_all$taxa<-factor(bNTI_all$taxa,ordered=T,levels = c('Bacteria','Fungi','Protists','Animal'))
+
+
+
+bNTI_freq_plot<-ggplot(bNTI_all, aes(bNTI,fill = taxa)) + 
+  geom_histogram(color="black",position="identity",bins = 20)+
+  facet_wrap( ~taxa, scales='free',ncol = 2) +
+  scale_fill_manual(values=c(cols[1],cols[4],cols[2],cols[3]))+
+  ylab('Frequency')+xlab('βNTI')+
+  theme_bw()+
+  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
+        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+bNTI_freq_plot
