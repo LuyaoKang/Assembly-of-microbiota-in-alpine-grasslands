@@ -336,7 +336,6 @@ env_dist<-vegdist(env_vars, 'euclidean',upper=F)
 env.dist<-as.numeric(env_dist)
 #DDR
 ddr_fun <- function(phylo){
-  #对微生物数据进行hellinger转换
   #otu_tab <- decostand(otu_tab, 'hellinger', MARGIN = 1)
   dist_mat <- vegdist(t(otu_table(phylo)), 'bray', upper=F)
   com_dissimilarty <- as.numeric(dist_mat)*100
@@ -796,20 +795,9 @@ SelectionDistResponseReg<-function (Dist_Matrix,X,Number_Permutations,alpha) {
   return(result)
 }
 
-##select pcnms using forward selection
-geo_sig_pcnm<-function(taxa_dist,geo.vars){
-  require(adespatial)
-  require(tidyr)
-  require(ape)
-  pcnm.geo <- pcnm(dist(geo.vars))
-  geo_sig_pcnm<-forward.sel(pcoa(taxa_dist)$vectors,pcnm.geo$vectors)
-  mm.Geography<-pcnm.geo$vectors[,geo_sig_pcnm$variables]
-  Geography.dist<-as.matrix(mm.Geography)
-  return(Geography.dist)
-}
-
 #Construct a variation partition function 
 vp <- function(phylo){
+  set.seed(999)
   require(vegan)
   siteXspe <- t(otu_table(phylo))
   siteXspe <- as.matrix(siteXspe)
@@ -819,26 +807,38 @@ vp <- function(phylo){
   #M <- siteXspe[sample.seeds,]
   env_vars<-env[,-c(1:4)]
   Geography_vars<-env[,c(1:2)]
-  abund_table<-decostand(siteXspe, 'hellinger',MARGIN = 1)
-  commu.dist<-vegdist(abund_table, 'bray',upper=F)
-  geo.dist<-geo_sig_pcnm(commu.dist,Geography_vars)
+  otu_tab <- decostand(siteXspe, 'hellinger')
+  commu.dist<-vegdist(otu_tab, 'bray',upper=F)
+  pcnm_vars <- (pcnm(dist(Geography_vars)))$vectors
   env_dist<-env_vars[,SelectionDistResponseReg(commu.dist,env_vars,999,0.05)$Selected_Variables]
-  vp<-VarPartDistResponse(commu.dist,env_dist,geo.dist,999)
-  results<-list(vp,env_dist,geo.dist)
+  geo_dist<-pcnm_vars[,SelectionDistResponseReg(commu.dist,pcnm_vars,999,0.05)$Selected_Variables]
+  # check collinearities among selected variables
+  env_df <- as.matrix(env_dist)
+  env <- decostand(env_df,"standardize")
+  geo <- as.matrix(geo_dist)
+  all.vars <- data.frame(env, geo)
+  ord <- dbrda(otu_tab~., all.vars)
+  ord.vif <- vif.cca(ord)
+  #remove the varibles with vif >20
+  all.vars <- all.vars[,names(ord.vif[ord.vif < 20])]
+  env_sel_vars <- env_dist[,c(intersect(colnames(env_dist),colnames(all.vars)))]
+  geo_sel_vars <- geo_dist[,c(intersect(colnames(geo_dist),colnames(all.vars)))]
+  #conduct VPA
+  vp<-VarPartDistResponse(commu.dist,env_sel_vars,geo_sel_vars,999)
+  results<-list(vp,env_sel_vars,geo_sel_vars)
   return(results)
 }
 
-set.seed(123)
-vp.baceria<-vp(bac.phylo)
+vp.bacteria<-vp(bac.phylo)
 vp.fungi<-vp(fungi.phylo)
 vp.protists<-vp(protist.phylo)
 vp.animal<-vp(animal.phylo)
 
-bacteria_vp<-vp.baceria[[1]]
-bacteia_env_dist<-vp.baceria[[2]]
-bacteia_geo_dist<-vp.baceria[[3]]
-colnames(bacteia_env_dist)
-colnames(bacteia_geo_dist)
+bacteria_vp<-vp.bacteria[[1]]
+bacteria_env_dist<-vp.bacteria[[2]]
+bacteria_geo_dist<-vp.bacteria[[3]]
+colnames(bacteria_env_dist)
+colnames(bacteria_geo_dist)
 
 fungi_vp<-vp.fungi[[1]]
 fungi_env_dist<-vp.fungi[[2]]
@@ -870,7 +870,7 @@ sort.dispersal.ration=c(Sorting_effect/dispersal_effect)
 vp.dat<-data.frame(taxa=c('Bacteria','Fungi','Protists','Animal'),Sorting_effect,
                    dispersal_effect,sorting.dispersal,sort.dispersal.ration)
 vp.dat$taxa<-factor(vp.dat$taxa,ordered = T,
-                    levels=c('Bacteria','Protists','Animal','Fungi'))
+                    levels=c('Bacteria','Fungi','Protists','Animal'))
 
 melted <- melt(vp.dat, id.vars=c("taxa"))
 
@@ -882,19 +882,71 @@ n = 4
 cols = gg_color_hue(n)
 cols16<-rep(cols,4)
 vp.plot<-ggplot(melted,aes(taxa,value)) + 
-  geom_bar(stat = 'identity',aes(fill=taxa))+
+  geom_bar(stat = 'identity',aes(fill=taxa), width = 0.8)+
   scale_fill_manual(values=cols)+
-  scale_x_discrete(limits=c('Bacteria','Protists','Animal','Fungi'))+
+  scale_x_discrete(limits=c('Bacteria','Fungi','Protists','Animal'))+
   #scale_y_continuous(expand = c(0,0))+
   facet_wrap( .~ variable , scales="free_y",ncol = 2) +
-  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
-        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12, colour = 'black'),
+        strip.text = element_text(size = 14),legend.position='none',panel.grid = element_blank())
+vp.plot  
+
+
+# dbRDA plot with color fradient for AI
+beta_dbrda <- function(phylo, env_df, geo_df) {
+  p_list=c("ggplot2", "vegan", "ggrepel")
+  for(p in p_list){
+    if (!requireNamespace(p)){
+      install.packages(p)}
+    suppressWarnings(suppressMessages(library(p,character.only=T)))}
+  otu_tab <- as.matrix(t(otu_table(phylo)))
+  otu_tab <- decostand(otu_tab, 'hellinger')
+  env_df <- as.matrix(env_df)
+  env <- decostand(env_df,"standardize")
+  geo <- as.matrix(geo_df)
+  all.vars <- data.frame(env, geo)
+  ord <- dbrda(otu_tab ~., all.vars)
+  mode <- anova(ord, by = 'margin')
+  eig <- ord$CCA$eig
+  vare_spp_sco <- scores(ord, display = "species")
+  vare_sam_sco <- scores(ord, display = "sites")
+  vare_env_sco <- scores(ord, display = "bp")
+  vare_env_sco <- vare_env_sco[which(mode$`Pr(>F)` < 0.01),]
+  points <- data.frame(vare_sam_sco,bacteia_env_dist$AI)
+  colnames(points)=c("x", "y", 'AI')
+  fit_coord_cont <- data.frame(vare_env_sco, variables = rownames(vare_env_sco))
+  ggplot(data = points, aes(x = x, y = y)) + 
+    geom_point(data = points, aes(colour = AI), size = 3.5, alpha = 0.8) + 
+    scale_colour_gradientn(colours = terrain.colors(10))+
+    geom_segment(data = fit_coord_cont,
+                 aes(x = 0, xend = dbRDA1*1.8, y = 0, yend = dbRDA2*1.8),
+                 arrow = arrow(length = unit(0.25, "cm")), colour = "grey", lwd = 0.5) +
+    geom_text(data = fit_coord_cont, aes(x = dbRDA1*1.8, y = dbRDA2*1.8, label = variables), colour = "black", 
+              size = 4.5) +
+    labs(x=paste("dbRDA1 (", format(100 * eig[1] / sum(eig), digits=4), "%)", sep=""),
+         y=paste("dbRDA2 (", format(100 * eig[2] / sum(eig), digits=4), "%)", sep="")) +
+    theme(axis.title = element_text(size = 14, colour = "black"),
+          axis.text = element_text(size = 12, colour = "black"),
+          panel.grid = element_blank(),
+          panel.background = element_blank(), 
+          panel.border = element_rect(fill = NA, colour = "black"))
+}
+
+p1 <- beta_dbrda(bac.phylo, bacteia_env_dist, bacteria_geo_dist)
+p2 <- beta_dbrda(fungi.phylo, fungi_env_dist, fungi_geo_dist)
+p3 <- beta_dbrda(protist.phylo, protists_env_dist, protists_geo_dist)
+p4 <- beta_dbrda(animal.phylo, animal_env_dist, animal_geo_dist)
+
+library(cowplot)
+plot_grid(p1, p2, p3, p4,
+          labels = c("(a)", "(b)", "(c)", "(d)"), ncol = 2, nrow = 2, label_x = .01,
+          label_y = 1.005,hjust = 0, label_size=15,align = "v")
 ```
 
 ## Partial mantel test
 ```{r}
 #the relationship between geo dist with community dist after control env dist
-mantel.partial(geo_dist, bacteria.dis.tab[[2]], env_dist, method = "spearman")
+mantel.partial(bacteia_geo_dist, bacteria.dis.tab[[2]], bacteia_env_dist, method = "spearman")
 
 mantel.partial(geo_dist, fungi.dis.tab[[2]], env_dist, method = "spearman")
 
@@ -910,6 +962,8 @@ mantel.partial(env_dist, fungi.dis.tab[[2]], geo_dist, method = "spearman")
 mantel.partial(env_dist, protist.dis.tab[[2]], geo_dist, method = "spearman")
 
 mantel.partial(env_dist, animal.dis.tab[[2]], geo_dist, method = "spearman")
+
+
 ```
 
 # Neutral community model
