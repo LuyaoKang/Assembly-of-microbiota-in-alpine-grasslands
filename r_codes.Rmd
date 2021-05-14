@@ -1266,77 +1266,62 @@ nst.p<-ggplot(nst,aes(x=Taxa,y=NST*100))+
 nst.p
 ```
 
-# Phylogenetic and null model analysis
-filter.rel <- function(comun) {
-  comun <- t(comun)
+# NULL model analysis
+```{r}
+#function for extract the most abundant ASVs
+filter.rel <- function(phylo) {
+  require(phyloseq)
+  comun <- otu_table(phylo)
   ra <-rowSums(comun)/sum(comun)
-  otu_tab<- comun[ra >= 0.0005, ]
+  otu_tab<- comun[ra >= 0.0002, ]
   otu_tab <- data.frame(t(otu_tab))
   return(otu_tab)
 }
-  
-env_table<-read.csv('E:/147samples未抽平/network/147env.csv',header=TRUE,row.names=1,stringsAsFactors = FALSE)
-#Just a check to ensure that the samples in meta_table are in the same order as in abund_table
-env_table[1:5,1:5]
 
-#读取细菌的OTU表格
-otu_bacteria<-read.csv("E:/147samples未抽平/4taxa_otutable/otu_bacteria.csv",header=TRUE,row.names=1,stringsAsFactors = FALSE)
-filter.bac.tab <- filter.rel(otu_bacteria)
+filter.abun <- function(phylo, N) {
+  require(phyloseq)
+  comun <- otu_table(phylo)
+  rowmean <-sapply(1:nrow(comun),function(x) mean(comun[x,]))
+  comun <- comun[order(rowmean,decreasing=TRUE), ]
+  taxa_list <- rownames(comun)[1:N]
+  otu_tab <- comun[rownames(comun) %in% taxa_list,]
+  otu_tab <- data.frame(t(otu_tab))
+  return(otu_tab)
+}
+
+filter.tree <- function(phylo, otu_tab) {
+  require(phyloseq)
+  require(ape)
+  tree <- phy_tree(phylo)
+  tips<-colnames(otu_tab)
+  tree<-keep.tip(tree,tips)
+}
+
+#extract the most 1000 abundant ASVs
+#bacteria
+filter.bac.tab <- filter.abun(bac.phylo, 1000)
 ncol(filter.bac.tab)
-library(ape)
-OTU_tree <- read.tree("E:/147samples未抽平/tree/bacteria/rep_set.tre")
-tips<-colnames(filter.bac.tab)
-bacteria.tree<-keep.tip(OTU_tree,tips)
+sum(filter.bac.tab)/sum(otu_table(bac.phylo))
+bacteria.tree <- filter.tree(bac.phylo, filter.bac.tab)
+#fungi
+filter.fungi.tab <- filter.abun(fungi.phylo, 1000)
+ncol(filter.fungi.tab)
+sum(filter.fungi.tab)/sum(otu_table(fungi.phylo))
+fungi.tree <- filter.tree(fungi.phylo, filter.fungi.tab)
+#protist
+filter.protist.tab <- filter.abun(protist.phylo, 1000)
+ncol(filter.protist.tab)
+sum(filter.protist.tab)/sum(otu_table(protist.phylo))
+protist.tree <- filter.tree(protist.phylo, filter.protist.tab)
+#animal
+filter.animal.tab <- filter.abun(animal.phylo, nrow(otu_table(animal.phylo)))
+ncol(filter.animal.tab)
+sum(filter.animal.tab)/sum(otu_table(animal.phylo))
+animal.tree <- filter.tree(animal.phylo, filter.animal.tab)
+```
 
-######读取真菌的OTU表格#####
-#读取真菌的OTU表格
-otu_fungi<-read.csv("E:/147samples未抽平/4taxa_otutable/otu_fungi.csv",header=TRUE,row.names=1,stringsAsFactors = FALSE)
-filter.fun.tab <- filter.rel(otu_fungi)
-ncol(filter.fun.tab)
-library(ape)
-OTU_tree <- read.tree("E:/147samples未抽平/tree/fungi/rep_set.fna.tre.tre")
-tips<-colnames(filter.fun.tab)
-fungi.tree<-keep.tip(OTU_tree,tips)
-
-#读取原生生物的OTU表格
-otu_protists<-read.csv("E:/147samples未抽平/4taxa_otutable/otu_protists.csv",header=TRUE,row.names=1,stringsAsFactors = FALSE)
-filter.proti.tab <- filter.rel(otu_protists)
-ncol(filter.proti.tab)
-#读取土壤动物的OTU表格
-otu_animal<-read.csv("E:/147samples未抽平/4taxa_otutable/otu_animal.csv",header=TRUE,row.names=1,stringsAsFactors = FALSE)
-filter.anim.tab <- filter.rel(otu_animal)
-ncol(filter.anim.tab)
-library(ape)
-OTU_tree <- read.tree("E:/147samples未抽平/tree/protists/rep_set.tre")
-protists.tips<-colnames(filter.proti.tab)
-protists.tree<-keep.tip(OTU_tree,protists.tips)
-animal.tips<-colnames(filter.anim.tab)
-animal.tree<-keep.tip(OTU_tree,animal.tips)
-
-#MPD.WEIGHTED.ABUNDANCE
-library(picante)
-bacteria.mpd.a<-mpd(otu_bacteria,cophenetic(bacteria.tree),abundance.weighted = T)
-fungi.mpd.a<-mpd(otu_fungi,cophenetic(fungi.tree),abundance.weighted = T)
-protists.mpd.a<-mpd(otu_protists,cophenetic(protists.tree),abundance.weighted = T)
-animal.mpd.a<-mpd(otu_animal,cophenetic(animal.tree),abundance.weighted = T)
-
-
-#se.mntd
-ses.mntd.bacteria <- ses.mntd(otu_bacteria, cophenetic(bacteria.tree), 
-                              null.model="taxa.labels",abundance.weighted=T, runs=99)
-
-results.bacteria<-data.frame(groups=c(rep('All',147),env_table$Biome),
-                             mpd.obs.z=c(ses.mntd.bacteria$mpd.obs.z,ses.mntd.bacteria$mpd.obs.z),
-                             mntd.obs.z=c(ses.mntd.bacteria$mntd.obs.z,ses.mntd.bacteria$mntd.obs.z),stringsAsFactors = F)
-
-ses.mntd.fungi <- ses.mntd(otu_fungi, cophenetic(fungi.tree), 
-                           null.model="taxa.labels",abundance.weighted=T, runs=99)
-ses.mntd.protists <- ses.mntd(otu_protists, cophenetic(protists.tree), 
-                              null.model="taxa.labels",abundance.weighted=T, runs=99)
-ses.mntd.animal <- ses.mntd(otu_animal, cophenetic(animal.tree), 
-                            null.model="taxa.labels",abundance.weighted=T, runs=99)
-
-#### R codes for null model analysis modified according to Stegen et al. (2013) ####
+R codes for null model analysis modified according to Stegen et al. (2013) ####
+```{r}
 #phylo: Phylogenetic tree of each OTU
 #comun: A community table with samples as rows and OTUs as columns. 
 #Beta_NTI
@@ -1349,8 +1334,8 @@ Beta_NTI<-function(tree,comun){
   identical(colnames(match.phylo.comun$data),colnames(beta.mntd.weighted)); # just a check, should be TRUE
   identical(colnames(match.phylo.comun$data),rownames(beta.mntd.weighted)); # just a check, should be TRUE
   # calculate randomized betaMNTD
-  beta.reps = 999; # number of randomizations
-  rand.weighted.bMNTD.comp = array(c(-999),dim=c(ncol(match.phylo.comun$data),ncol(match.phylo.comun$data),beta.reps));
+  beta.reps = 9; # number of randomizations
+  rand.weighted.bMNTD.comp = array(c(-9),dim=c(ncol(match.phylo.comun$data),ncol(match.phylo.comun$data),beta.reps));
   for (rep in 1:beta.reps) {
     rand.weighted.bMNTD.comp[,,rep] = as.matrix(comdistnt(t(match.phylo.comun$data),
                                                           taxaShuffle(cophenetic(match.phylo.comun$phy)),
@@ -1373,9 +1358,8 @@ Beta_NTI<-function(tree,comun){
   return(results)
 }
 
-
 #RC_bray
-raup_crick= function(comun, reps=999){
+raup_crick= function(comun, reps=9){
   require(ecodist) 
   ## count number of sites and total species richness across all plots (gamma)
   n_sites<-nrow(comun)
@@ -1437,57 +1421,65 @@ raup_crick= function(comun, reps=999){
   return(results)
 }
 
+#calculate the βNTI and RC_bray, this procedure is excessively time consuming. 
+#In our study, it spent about half a month to finish this procedure.
 
+#Beta_NTI_bacteria<-Beta_NTI(bacteria.tree, filter.bac.tab)
+#Beta_NTI_bacteria_1000 <- as.matrix(Beta_NTI_bacteria)
+#write.csv(Beta_NTI_bacteria_1000,"./result/null_model/bacteria.unweighted_bNTI_1000.csv",quote=F);
 
-#计算各个taxa的Beta_NTI指数
-Beta_NTI_bacteria<-Beta_NTI(bacteria.tree, filter.bac.tab)
-write.csv(Beta_NTI_bacteria,"E:/147samples/results/零模型/bacteria.unweighted_bNTI20210417_0.05.csv",quote=F);
+#Beta_NTI_fungi<-Beta_NTI(fungi.tree, filter.fun.tab)
+#Beta_NTI_fungi_1000 <- as.matrix(Beta_NTI_fungi)
+#write.csv(Beta_NTI_fungi_1000,"./result/null_model/fungi.unweighted_bNTI_1000.csv",quote=F);
 
-Beta_NTI_fungi<-Beta_NTI(fungi.tree, filter.fun.tab)
-write.csv(Beta_NTI_fungi,"E:/147samples/results/零模型/fungi.unweighted_bNTI20210417.csv",quote=F);
+#protist
+#Beta_NTI_protists<-Beta_NTI(animal.tree, filter.anim.tab)
+#Beta_NTI_protists_1000 <- as.matrix(Beta_NTI_protists)
+#write.csv(Beta_NTI_protists_1000,"./result/null_model/protists.unweighted_bNTI_1000.csv",quote=F);
 
-Beta_NTI_protists<-Beta_NTI(protists.tree, filter.proti.tab)
-write.csv(Beta_NTI_protists,"E:/147samples/results/零模型/protists.unweighted_bNTI20210408.csv",quote=F);
+#Beta_NTI_animal<-Beta_NTI(animal.tree, filter.anim.tab)
+#Beta_NTI_animal_1000 <- as.matrix(Beta_NTI_animal)
+#write.csv(b_NTI_animal_1000,"./result/null_mode/animal.unweighted_bNTI_1000.csv",quote=F);
 
-Beta_NTI_animal<-Beta_NTI(animal.tree, filter.anim.tab)
-write.csv(b_NTI_animal,"E:/147samples/results/零模型/animal.unweighted_bNTI20210408.csv",quote=F);
+#calculate the RC_bray
+#rcbray_bacteria<-raup_crick(filter.bac.tab)
+#rcbray_bacteria_1000<-as.matrix(rcbray_bacteria)
+#write.csv(rcbray_bacteria_1000,"./result/null_model/raup_crick_bacteria_1000.csv",quote=F);
 
-library(NST)
-b_NTI_animal3col<-dist.3col(Beta_NTI_animal)
-write.csv(b_NTI_animal3col,"E:/147samples未抽平/tree/animal/animal.unweighted_bNTI_未抽平3col.csv",quote=F);
+#rcbray_fungi<-raup_crick(filter.fun.tab)
+#rcbray_fungi_1000<-as.matrix(rcbray_fungi)
+#write.csv(rcbray_fungi,"./result/null_model/raup_crick_fungi_1000.csv",quote=F);
 
+#rcbray_protists<-raup_crick(filter.proti.tab)
+#rcbray_protists_1000<-as.matrix(rcbray_protists)
+#write.csv(rcbray_protists_1000,"./result/null_model/raup_crick_protists_1000.csv",quote=F);
 
+#rcbray_animal<-raup_crick(filter.anim.tab)
+#rcbray_animal_1000<-as.matrix(rcbray_animal)
+#write.csv(rcbray_animal_1000,"./result/null_model/animal/raup_crick_animal_1000.csv",quote=F);
 
+#read βNTI and RC_bray matrixes
+Beta_NTI_bacteria<-read.csv("./result/null_model/bacteria.weighted_bNTI_1000.csv",header=T,row.names=1,stringsAsFactors=F);
+rcbray_bacteria<-read.csv("./result/null_model/raup_crick_bacteria_1000.csv",header=T,row.names=1,stringsAsFactors=F);
 
-#计算各个taxa的rcbray指数
-rcbray_bacteria<-raup_crick(filter.bac.tab)
-write.csv(rcbray_bacteria,"E:/147samples未抽平/tree/bacteria/raup_crick_bacteria20210417_0.05.csv",quote=F);
+Beta_NTI_fungi<-read.csv("./result/null_model/fungi.weighted_bNTI_1000.csv",header=T,row.names=1,stringsAsFactors=F);
+rcbray_fungi<-read.csv("./result/null_model/raup_crick_fungi_1000.csv",header=T,row.names=1,stringsAsFactors=F);
 
-rcbray_fungi<-raup_crick(filter.fun.tab)
-write.csv(rcbray_fungi,"E:/147samples未抽平/tree/fungi/raup_crick_fungi20210408.csv",quote=F);
+Beta_NTI_protists<-read.csv("./result/null_model/protist.weighted_bNTI_1000.csv",header=T,row.names=1,stringsAsFactors=F);
+rcbray_protists<-read.csv("./result/null_model/raup_crick_protists_1000.csv",header=T,row.names=1,stringsAsFactors=F);
 
-rcbray_protists<-raup_crick(filter.proti.tab)
-write.csv(rcbray_protists,"E:/147samples未抽平/tree/protists/raup_crick_protists20210408.csv",quote=F);
+Beta_NTI_animal<-read.csv("./result/null_model/animal.unweighted_bNTI_1000.csv",header=T,row.names=1,stringsAsFactors=F);
+rcbray_animal<-read.csv("./result/null_model/raup_crick_animal_1000.csv",header=T,row.names=1,stringsAsFactors=F);
 
-rcbray_animal<-raup_crick(filter.anim.tab)
-write.csv(rcbray_animal,"E:/147samples未抽平/tree/animal/raup_crick_animal20210408.csv",quote=F);
-
-
-null.index<-function(bNTI.df,rcbray.df){
-  bnti_mat <- as.matrix(bNTI.df)
-  bNTI.mat<-matrix(0,nrow = 147,ncol = 147)
-  bNTI.mat[lower.tri(bNTI.mat)] <- bnti_mat[lower.tri(bnti_mat, diag=TRUE)]
-  bNTI.dist<-as.dist(bNTI.mat)
-  #
-  rcbray.mat <- as.matrix(rcbray.df)
-  RC.mat<-matrix(0,nrow = 147,ncol = 147)
-  RC.mat[lower.tri(RC.mat)] <- rcbray.mat [lower.tri(rcbray.mat, diag=TRUE)]
-  RC.dist<-as.dist(RC.mat)
+#determine the relative contribution of each process in shaping community
+null.index<-function(bNTI.df, rcbray.df){
+  bNTI.dist<-as.dist(bNTI.df)
+  RC.dist<-as.dist(rcbray.df)
   library(NST)
   null.value<-cbind(dist.3col(bNTI.dist),dist.3col(RC.dist)[3])
   colnames(null.value)<-c('name1','name2','bNTI','RC_bray')
-  homogeneous_selection<-nrow(subset(null.value,bNTI>2))
-  heterogeneous_selection<-nrow(subset(null.value,bNTI<(-2)))
+  heterogeneous_selection<-nrow(subset(null.value,bNTI>2))
+  homogeneous_selection<-nrow(subset(null.value,bNTI<(-2)))
   dispersal_limitation<-nrow(subset(null.value,bNTI<2 & bNTI>(-2) & RC_bray>0.95))
   homogenizing_dispersal<-nrow(subset(null.value,bNTI<2 & bNTI>(-2) & RC_bray<(-0.95)))
   undominated<-nrow(subset(null.value,bNTI<2 & bNTI>(-2) & RC_bray<0.95 & RC_bray>(-0.95)))
@@ -1499,69 +1491,18 @@ null.index<-function(bNTI.df,rcbray.df){
   return(df)
 }
 
-#计算各个生态过程的相对重要性
-
-Beta_NTI_bacteria<-read.csv("E:/147samples未抽平/零模型/bNTI/bacteria.weighted_bNTI.csv",header=T,row.names=1,stringsAsFactors=F);
-rcbray_bacteria<-read.csv("E:/147samples未抽平/零模型/RC_bray/rc.bacteria.csv",header=T,row.names=1,stringsAsFactors=F);
-
-Beta_NTI_fungi<-read.csv("E:/147samples未抽平/零模型/bNTI/fungi.weighted_bNTI.csv",header=T,row.names=1,stringsAsFactors=F);
-rcbray_fungi<-read.csv("E:/147samples未抽平/零模型/RC_bray/rc.fungi.csv",header=T,row.names=1,stringsAsFactors=F);
-
-Beta_NTI_protists<-read.csv("E:/147samples未抽平/零模型/bNTI/protists.weighted_bNTI.csv",header=T,row.names=1,stringsAsFactors=F);
-rcbray_protists<-read.csv("E:/147samples未抽平/零模型/RC_bray/rc.protists.csv",header=T,row.names=1,stringsAsFactors=F);
-
-Beta_NTI_animal<-read.csv("E:/147samples未抽平/零模型/bNTI/animal.weighted_bNTI.csv",header=T,row.names=1,stringsAsFactors=F);
-rcbray_animal<-read.csv("E:/147samples未抽平/零模型/RC_bray/rc.animal.csv",header=T,row.names=1,stringsAsFactors=F);
-
-
+#determine the relative contribution of each process in shaping community
 bacteria.null<-null.index(Beta_NTI_bacteria,rcbray_bacteria)
 fungi.null<-null.index(Beta_NTI_fungi,rcbray_fungi)
 protists.null<-null.index(Beta_NTI_protists,rcbray_protists)
 animal.null<-null.index(Beta_NTI_animal,rcbray_animal)
 
-#作图
-doughnut.plot<-function(data){
-  # load library
-  library(ggplot2)
-  library(dplyr)
-  # Compute percentages
-  
-  data$prop <- round(data$count / sum(data$count),3)
-  
-  count.data <- data %>%
-    arrange(desc(process)) %>%
-    mutate(lab.ypos = cumsum(prop) - 0.5*prop)
-  
-  mycols <- c("#0073C2FF", "#EFC000FF", "#868686FF", "#CD534CFF",'#009E73')
-  # Make the plot
-  p<-ggplot(count.data, aes(x = 2, y = prop, fill = process)) +
-    geom_bar(stat = "identity", color = "white") +
-    coord_polar(theta = "y", start = 0)+
-    geom_text(aes(y = lab.ypos, label = prop), color = "white")+
-    scale_fill_manual(values = mycols) +
-    theme_void()+
-    xlim(0.5, 2.5)
-  return(p)
-}
-
-B.doug<-doughnut.plot(bacteria.null)
-F.doug<-doughnut.plot(fungi.null)
-P.doug<-doughnut.plot(protists.null)
-A.doug<-doughnut.plot(animal.null)
-
-
-
-library(cowplot)
-plot_grid(B.doug,F.doug,P.doug,A.doug,
-          labels = "auto", ncol = 2, nrow = 2, label_x = .01, 
-          label_y = 1.005,hjust = 0, label_size=17,align = "v")
-
-
+#transform the wide dataframe to long format
 null.3col<-function(bNTI.df){
   bnti_mat <- as.matrix(bNTI.df)
   bNTI.mat<-matrix(0,nrow = 147,ncol = 147)
   bNTI.mat[lower.tri(bNTI.mat)] <- bnti_mat[lower.tri(bnti_mat, diag=TRUE)]
-  bNTI.dist<-as.dist(bNTI.mat)
+  bNTI.dist<-as.dist(bNTI.df)
   library(NST)
   null.value<-dist.3col(bNTI.dist)
   colnames(null.value)<-c('name1','name2','bNTI')
@@ -1573,116 +1514,65 @@ bNTI_fungi<-null.3col(Beta_NTI_fungi)
 bNTI_protists<-null.3col(Beta_NTI_protists)
 bNTI_animal<-null.3col(Beta_NTI_animal)
 
-
-
-#density plot with diversity indexes
-
+#density plot of βNTI
+#set colors
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 n = 4
 cols = gg_color_hue(n)
-
-
-#Density Plot
-density_plot<-function(x,cols){
-  hist(x, # histogram
-       col=cols, # column color
-       border="black",
-       prob = F, # show densities instead of frequencies
-       main=NULL,
-       cex.lab=1, cex.axis=0.8)
-  #lines(x, # density plot
-  #lwd = 2, # thickness of line
-  #col = "chocolate3")
-  #abline(v=c(-2,2), col=c("blue", "blue"), lty=c(1,1), lwd=c(3, 3))
-}
-
-opar<-par(no.readonly = T)
-par(mfrow=c(2,2))
-density_plot(bNTI_bacteria$bNTI,cols[1])
-density_plot(bNTI_fungi$bNTI,cols[4])
-density_plot(bNTI_protists$bNTI,cols[2])
-density_plot(bNTI_animal$bNTI,cols[3])
-par(opar)
-
-
-
-
-library(ggplot2)
-B.plot<-ggplot(bNTI_bacteria,aes(x=bNTI)) +
-  geom_density( alpha = 0.5,size=1,color='purple2', fill='purple2')+
-  theme_classic()
-
-F.plot<-ggplot(bNTI_fungi, aes(x=bNTI)) +
-  geom_density( alpha = 0.5,size=1,color='green4', fill='green4')+
-  theme_classic()
-
-P.plot<-ggplot(bNTI_protists, aes(x=bNTI)) +
-  geom_density( alpha = 0.5,size=1,color='orange1', fill='orange1')+
-  theme_classic()
-
-A.plot<-ggplot(bNTI_animal, aes(x=bNTI)) +
-  geom_density( alpha = 0.5,size=1,color='skyblue2', fill='skyblue2')+
-  theme_classic()
-
-library(cowplot)
-#pdf("E:/147samples未抽平/abundance_distribution1.pdf",width=10,height=12)
-plot_grid(B.plot,F.plot,P.plot,A.plot,
-          labels = NULL, ncol = 2, nrow = 2, label_x = .01, label_y = 0.99,
-          hjust = 0, label_size=17,align = "v")
-#dev.off()
-
-
-#density plot with diversity indexes
-
-gg_color_hue <- function(n) {
-  hues = seq(15, 375, length = n + 1)
-  hcl(h = hues, l = 65, c = 100)[1:n]
-}
-n = 4
-cols = gg_color_hue(n)
-
-
-#Density Plot
-density_plot<-function(x,cols){
-  hist(x, # histogram
-       col=cols, # column color
-       border="black",
-       prob = F, # show densities instead of frequencies
-       main=NULL,
-       cex.lab=1.7, cex.axis=1.7, cex.main=1.7)
-  #lines(x, # density plot
-  #lwd = 2, # thickness of line
-  #col = "chocolate3")
-  #abline(v=c(-2,2), col=c("blue", "blue"), lty=c(1,1), lwd=c(3, 3))
-}
-
-opar<-par(no.readonly = T)
-par(mfrow=c(2,2))
-density_plot(bNTI_bacteria$bNTI,cols[1])
-density_plot(bNTI_protists$bNTI,cols[2])
-density_plot(bNTI_animal$bNTI,cols[3])
-density_plot(bNTI_fungi$bNTI,cols[4])
-par(opar)
-
 
 bNTI_all<-data.frame(taxa=c(rep('Bacteria',nrow(bNTI_bacteria)),
-                                rep('Fungi',nrow(bNTI_fungi)),
-                                rep('Protists',nrow(bNTI_protists)),
-                                rep('Animal',nrow(bNTI_animal))),
+                            rep('Fungi',nrow(bNTI_fungi)),
+                            rep('Protists',nrow(bNTI_protists)),
+                            rep('Animal',nrow(bNTI_animal))),
                      rbind(bNTI_bacteria,bNTI_fungi,bNTI_protists,bNTI_animal))
 bNTI_all$taxa<-factor(bNTI_all$taxa,ordered=T,levels = c('Bacteria','Fungi','Protists','Animal'))
-
-
-
+#plot for the frequence distribution of bNTI
 bNTI_freq_plot<-ggplot(bNTI_all, aes(bNTI,fill = taxa)) + 
   geom_histogram(color="black",position="identity",bins = 20)+
   facet_wrap( ~taxa, scales='free',ncol = 2) +
-  scale_fill_manual(values=c(cols[1],cols[4],cols[2],cols[3]))+
+  scale_fill_manual(values=c(cols[1],cols[2],cols[3],cols[4]))+
   ylab('Frequency')+xlab('βNTI')+
   theme_bw()+
-  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
-        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+  theme(axis.title = element_text(size=14),axis.text = element_text(size=12, colour = 'black'),
+        strip.text = element_text(size = 14),legend.position='none',panel.grid = element_blank())
 bNTI_freq_plot
+
+#pie plot for the proportion of each process
+doughnut.plot<-function(data){
+  # load library
+  library(ggplot2)
+  library(dplyr)
+  # Compute percentages
+  data$process <- factor(data$process, ordered = T, 
+                         levels = c('heterogeneous_selection', 'homogeneous_selection',
+                                    'dispersal_limitation', 'homogenizing_dispersal', 'undominated'))
+  data$Proportion <- round(data$Proportion*100, 2)
+  
+  count.data <- data %>%
+    arrange(desc(process)) %>%
+    mutate(lab.ypos = cumsum(Proportion) - 0.5*Proportion)
+  mycols <- c("#CD534CFF", "#EFC000FF", "#0073C2FF", "#5d8aa8", '#009E73')
+  # Make the plot
+  p<-ggplot(count.data, aes(x = 2, y = Proportion, fill = process)) +
+    geom_bar(stat = "identity", color = "white") +
+    coord_polar(theta = "y", start = 0)+
+    geom_text(aes(y = lab.ypos, label = Proportion), color = "black")+
+    scale_fill_manual(values = mycols) +
+    theme_void()+
+    xlim(0.5, 2.5)
+  return(p)
+}
+
+B.doug<-doughnut.plot(bacteria.null)
+F.doug<-doughnut.plot(fungi.null)
+P.doug<-doughnut.plot(protists.null)
+A.doug<-doughnut.plot(animal.null)
+
+library(cowplot)
+plot_grid(B.doug,F.doug,P.doug,A.doug,
+          labels = "auto", ncol = 2, nrow = 2, label_x = .01, 
+          label_y = 1.005,hjust = 0, label_size=17,align = "v")
+```
