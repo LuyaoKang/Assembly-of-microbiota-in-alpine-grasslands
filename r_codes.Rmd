@@ -946,7 +946,7 @@ plot_grid(p1, p2, p3, p4,
 ## Partial mantel test
 ```{r}
 #the relationship between geo dist with community dist after control env dist
-mantel.partial(bacteia_geo_dist, bacteria.dis.tab[[2]], bacteia_env_dist, method = "spearman")
+mantel.partial(geo_dist, bacteria.dis.tab[[2]], env_dist, method = "spearman")
 
 mantel.partial(geo_dist, fungi.dis.tab[[2]], env_dist, method = "spearman")
 
