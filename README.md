@@ -5,5 +5,5 @@ The *data* file contains the metadata, ASV tables, phylogenetic trees and corres
 
 The *r_scripts* file including the R scripts for all statistical analyses. 
 
-*Community Assembly in Alpine Ecosystem.html* file is the  knitr file for the analysis.
+*Community Assembly in Alpine Ecosystem.html* file is the  knitr file for the analysis, which produced by *r_codes.Rmd* using knitr package in R.
 
