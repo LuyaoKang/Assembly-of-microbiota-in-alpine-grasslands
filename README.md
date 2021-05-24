@@ -1,5 +1,5 @@
 # Assembly-of-soil-microbiota-in-alpine-grasslands
-This repository contains R codes for microbial community analysis of alpine grasslands. 
+This repository contains R codes and data for microbial community analysis of alpine grasslands. 
 
 The *data* file contains the metadata, ASV tables, phylogenetic trees and corresponding taxonomic classifications. 
 
