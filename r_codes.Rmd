@@ -1,5 +1,5 @@
 ---
-title: "community assembly in alpine ecosystem"
+title: "Community Assembly in Alpine Ecosystem"
 author: "Luyao Kang"
 date: "`r Sys.Date()`"
 output: rmarkdown::html_vignette
@@ -27,6 +27,10 @@ library(ggplot2)
 
 # Construct phyloseq objects
 ```{r}
+#read in metadata
+metadata <- read.delim("./data/metadata.txt", sep = '\t', row.names=1, header = T)
+metadata <- sample_data(metadata)
+
 ## bacteria
 #read in otu table
 otu.table <- read.delim('./data/bacteria/otutab_rare.txt',sep="\t", row.names=1, header = T)
@@ -35,9 +39,6 @@ otu.table <- as.matrix(otu.table)
 #read in taxonomy, seperated by kingdom phylum class order family genus species 
 taxonomy <- read.delim('./data/bacteria/taxonomy.txt',sep="\t",row.names=1, header = T)
 taxonomy <- as.matrix(taxonomy)
-
-#read in metadata
-metadata <- read.delim("./data/bacteria/metadata.txt", sep = '\t', row.names=1, header = T)
 
 # read in tree
 tree <- read_tree('./data/bacteria/otus.nwk')
@@ -49,7 +50,6 @@ ref_seqs <- readDNAStringSet(file = "./data/bacteria/otus.fa",
 #import as phyloseq objects
 otu.table <- otu_table(otu.table, taxa_are_rows = TRUE)
 taxonomy <- tax_table(taxonomy)
-metadata <- sample_data(metadata)
 
 #merge into one phyloseq object
 bac.phylo <- phyloseq(otu.table, taxonomy, metadata, tree, ref_seqs)
@@ -65,9 +65,6 @@ otu.table <- as.matrix(otu.table)
 taxonomy <- read.delim('./data/fungi/taxonomy.txt',sep="\t",row.names=1, header = T)
 taxonomy <- as.matrix(taxonomy)
 
-#read in metadata
-metadata <- read.delim("./data/fungi/metadata.txt", sep = '\t', row.names=1, header = T)
-
 # read in tree
 tree <- read_tree('./data/fungi/otus.nwk')
 
@@ -78,7 +75,6 @@ ref_seqs <- readDNAStringSet(file = "./data/fungi/otus.fa",
 #import as phyloseq objects
 otu.table <- otu_table(otu.table, taxa_are_rows = TRUE)
 taxonomy <- tax_table(taxonomy)
-metadata <- sample_data(metadata)
 
 #merge into one phyloseq object
 fungi.phylo <- phyloseq(otu.table, taxonomy, metadata, tree, ref_seqs)
@@ -94,9 +90,6 @@ otu.table <- as.matrix(otu.table)
 taxonomy <- read.delim('./data/protist/taxonomy.txt',sep="\t",row.names=1, header = T)
 taxonomy <- as.matrix(taxonomy)
 
-#read in metadata
-metadata <- read.delim("./data/protist/metadata.txt", sep = '\t', row.names=1, header = T)
-
 # read in tree
 tree <- read_tree('./data/protist/otus.nwk')
 
@@ -107,7 +100,6 @@ ref_seqs <- readDNAStringSet(file = "./data/protist/otus.fa",
 #import as phyloseq objects
 otu.table <- otu_table(otu.table, taxa_are_rows = TRUE)
 taxonomy <- tax_table(taxonomy)
-metadata <- sample_data(metadata)
 
 #merge into one phyloseq object
 protist.phylo <- phyloseq(otu.table, taxonomy, metadata, tree, ref_seqs)
@@ -123,9 +115,6 @@ otu.table <- as.matrix(otu.table)
 taxonomy <- read.delim('./data/animal/taxonomy.txt',sep="\t",row.names=1, header = T)
 taxonomy <- as.matrix(taxonomy)
 
-#read in metadata
-metadata <- read.delim("./data/animal/metadata.txt", sep = '\t', row.names=1, header = T)
-
 # read in tree
 tree <- read_tree('./data/animal/otus.nwk')
 
@@ -136,7 +125,6 @@ ref_seqs <- readDNAStringSet(file = "./data/animal/otus.fa",
 #import as phyloseq objects
 otu.table <- otu_table(otu.table, taxa_are_rows = TRUE)
 taxonomy <- tax_table(taxonomy)
-metadata <- sample_data(metadata)
 
 #merge into one phyloseq object
 animal.phylo <- phyloseq(otu.table, taxonomy, metadata, tree, ref_seqs)
@@ -145,8 +133,8 @@ animal.phylo.rel <- microbiome::transform(animal.phylo, "compositional")
 ```
 
 # Comunity composition 
-Extract list of top N Taxa, taxrank indicate 1 to kingdom, 2(phylum), 3(class)
 ```{r}
+# phylum.boxplot, Extract list of top N Taxa, taxrank indicate 1 to kingdom, 2(phylum), 3(class)
 new.df <-function(phylo.rel, taxrank, k, N) {
      otu_tab <- otu_table((tax_glom(phylo.rel, taxrank)))
      tax.names <- as.vector(tax_table(tax_glom(phylo.rel,taxrank))[,k])
@@ -175,10 +163,10 @@ phylum.plot.fun <- function(new_df) {
     coord_flip()
   return(p)  
 }
-new_df_bac <- new.df(bac.phylo.rel, 'Phylum', 2, 15)
-new_df_fungi <- new.df(fungi.phylo.rel, 'Phylum', 2, 15)
-new_df_protist <- new.df(protist.phylo.rel, 'Phylum', 2, 15)
-new_df_animal <- new.df(animal.phylo.rel, 'Class', 3, 15)
+new_df_bac <- new.df(bac.phylo.rel, 'Phylum', 2, 10)
+new_df_fungi <- new.df(fungi.phylo.rel, 'Phylum', 2, 10)
+new_df_protist <- new.df(protist.phylo.rel, 'Phylum', 2, 10)
+new_df_animal <- new.df(animal.phylo.rel, 'Class', 3, 10)
 
 bac.phy.boxplot <- phylum.plot.fun(new_df_bac)
 fungi.phy.boxplot <- phylum.plot.fun(new_df_fungi)
@@ -209,21 +197,33 @@ arrange.tab <- function(phylo, N, taxrank, vect) {
 }
 
 top10phylum_bcateria <- arrange.tab(bac.phylo, 10, 'Class', c(2,3))
-top10phylum_fungi <- arrange.tab(fungi.phylo, 10, 'Class', c(2,3))
-top10phylum_protist <- arrange.tab(protist.phylo, 10, 'Class', c(2,3))
-top10class_animal <- arrange.tab(animal.phylo, 7, 'Order', c(3,4))
+top10phylum_bcateria_tab <-data.frame(phylums =colnames(top10phylum_bcateria),
+                                      rela_abun = colSums(top10phylum_bcateria))
+top10phylum_bcateria_tab
 
+top10phylum_fungi <- arrange.tab(fungi.phylo, 10, 'Class', c(2,3))
+top10phylum_fungi_tab <-data.frame(phylums =colnames(top10phylum_fungi),
+                                   rela_abun = colSums(top10phylum_fungi))
+top10phylum_fungi_tab
+
+top10phylum_protist <- arrange.tab(protist.phylo, 10, 'Class', c(2,3))
+top10phylum_protist_tab <-data.frame(phylums =colnames(top10phylum_protist),
+                                     rela_abun = colSums(top10phylum_protist))
+top10phylum_protist_tab
+
+#soil animal only has 7 classes
+top7class_animal <- arrange.tab(animal.phylo, 7, 'Order', c(3,4))
+top7class_animal_tab <-data.frame(class =colnames(top7class_animal),
+                                  rela_abun = colSums(top7class_animal))
+top7class_animal_tab
 
 # Get the stacked barplot
 # create color palette:
-#library(RColorBrewer)
-#coul <- brewer.pal(nrow(top10_phy), "Pastel2") 
 mycol <-c(119,132,147,454,89,404,123,529,463,104,552,28,54,84,256,100,
           558,43,652,31,610,477,588,99,81,503,562,76,96,495,77,12,90,
           345,255,401,366,276,158,436)
 
-#pdf(file="./result/stacked_barplot_composition.pdf",width=890,height=590,pointsize=15,)
-layout(matrix(c(1:8),4,2, byrow = F))
+layout(matrix(c(1:8),4,2,byrow = F), c(1,1))
 #bacteria
 mycol <-colors()[rep(mycol,nrow(top10phylum_bcateria))]
 par(mar=c(2,5,2,2))
@@ -234,7 +234,7 @@ barplot(top10phylum_bcateria,width=1.8,space=0.4,plot=T,las=2,
 par(mar=c(2,3.5,3.5,1))
 plot.new()
 legend("topleft",legend=rownames(top10phylum_bcateria),
-       ncol=3,fill=mycol[1:nrow(top10phylum_bcateria)],cex=0.6,bty="n")
+       ncol=4,fill=mycol[1:nrow(top10phylum_bcateria)],cex=0.6,bty="n")
 
 #protist
 par(mar=c(2,5,2,2))
@@ -245,7 +245,7 @@ barplot(top10phylum_protist,width=1.8,space=0.4,plot=T,las=2,
 par(mar=c(2,3.5,3.5,1))
 plot.new()
 legend("topleft",legend=rownames(top10phylum_protist),
-       ncol=3,fill=mycol[1:nrow(top10phylum_protist)],cex=0.6,bty="n")
+       ncol=4,fill=mycol[1:nrow(top10phylum_protist)],cex=0.6,bty="n")
 
 #fungi
 par(mar=c(2,5,2,2))
@@ -256,23 +256,46 @@ barplot(top10phylum_fungi,width=1.8,space=0.4,plot=T,las=2,
 par(mar=c(2,3.5,3.5,1))
 plot.new()
 legend("topleft",legend=rownames(top10phylum_fungi),
-       ncol=3,fill=mycol[1:nrow(top10phylum_fungi)],cex=0.6,bty="n")
+       ncol=4,fill=mycol[1:nrow(top10phylum_fungi)],cex=0.6,bty="n")
 
 #animal
 par(mar=c(2,5,2,2))
-barplot(top10class_animal,width=1.8,space=0.4,plot=T,las=2,
-        col=mycol[1:nrow(top10class_animal)],cex.axis=0.8,cex.names=0.7,border=NA,
+barplot(top7class_animal,width=1.8,space=0.4,plot=T,las=2,
+        col=mycol[1:nrow(top7class_animal)],cex.axis=0.8,cex.names=0.7,border=NA,
         xlab = 'Phylum',ylab="Relative abundance(%)",
         offset=0,cex.lab=1)
 par(mar=c(2,3.5,3.5,1))
 plot.new()
-legend("topleft",legend=rownames(top10class_animal),
-       ncol=3,fill=mycol[1:nrow(top10class_animal)],cex=0.6,bty="n")
-#dev.off()
+legend("topleft",legend=rownames(top7class_animal),
+       ncol=4,fill=mycol[1:nrow(top7class_animal)],cex=0.6,bty="n")
+par(mfrow=c(1,1))
+```
+# α diversity
+```{r}
+alpha_bac <- read.delim('./data/bacteria/result/alpha/vegan.txt',sep="\t", 
+                        row.names=1, header = T)
+alpha_fungi <- read.delim('./data/fungi/result/alpha/vegan.txt',sep="\t", 
+                          row.names=1, header = T)
+alpha_protist <- read.delim('./data/protist/result/alpha/vegan.txt',sep="\t", 
+                            row.names=1, header = T)
+alpha_animal <- read.delim('./data/animal/result/alpha/vegan.txt',sep="\t", 
+                           row.names=1, header = T)
+
+alpha_bac <- cbind(tax = rep('Bacteria', 147), alpha_bac[,c(1,4,5)])
+alpha_fungi <- cbind(tax = rep('Fungi', 147), alpha_fungi[,c(1,4,5)])
+alpha_protist <- cbind(tax = rep('Protist', 147), alpha_protist[,c(1,4,5)])
+alpha_animal <- cbind(tax = rep('Animal', 147), alpha_animal[,c(1,4,5)])
+
+diversity <- rbind(alpha_bac, alpha_fungi, alpha_protist, alpha_animal)
+melted <- melt(diversity, id.vars = c('tax'))
+library(plyr)
+ddply(melted, c("tax", "variable"), summarise,
+      mean = mean(value), sd = sd(value),
+      sem = sd(value)/sqrt(length(value)))
 ```
 
 # Biogeographic pattern of soil microbiome
-## Variation and Distance-Decay relationshipS
+## Variation and Distance-Decay relationships
 ```{r}
 deg2rad <- function(deg) return(deg*pi/180)
 # Calculates the geodesic distance between two points specified by 
@@ -306,31 +329,17 @@ CalcDists <- function(longlats) {
   return(z)
 }
 
-summary.model<-function(model){
-  r.squre<-round(summary(model)$r.squared,3)
-  p.value<-round(anova(model)$'Pr(>F)'[1],3)
-  p.stars<- function(p.values) {
-    unclass(symnum(p.values, corr = FALSE, 
-                   na = FALSE, cutpoints = c(0,0.001, 0.01, 0.05, 0.1, 1),
-                   symbols = c("***", "**", "*", ".", " ")))}
-  sig<-p.stars(p.value)
-  slope <- round(model$coefficients[[2]],3)
-  results<-data.frame(slope,r.squre,p.value,sig)
-  return(results)
-}
-
 library(vegan)
 library(ggplot2)
-
 ######bacteria#########
 # calculate the disimilarity matrix of environment factors based on euclid distance
 env.table<-sample_data(bac.phylo)
 geo_dist<-data.frame(env.table[,1:2])
 geo_dist<-CalcDists(geo_dist)/100000
 Geography.dist <- as.numeric(geo_dist)
-#环境因子欧氏距离
+#determine the euclidean distance of environmental variables
 env_vars<-env.table[,-(1:4)]
-#标准化环境数据
+#standardize the env data
 env_vars<-decostand(as.data.frame(env_vars), 'standardize')
 env_dist<-vegdist(env_vars, 'euclidean',upper=F)
 env.dist<-as.numeric(env_dist)
@@ -424,7 +433,7 @@ p_dissimilarty<-ggplot(dat,aes(taxa,com_dissimilarty/100))+
   scale_fill_manual(values= cols)+
   geom_boxplot(width=0.1,fill="white")+
   xlab('Taxa')+ylab('Community dissimilarity')+
-  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
+  theme(axis.title = element_text(size=9),axis.text = element_text(size=7),
         panel.grid = element_blank(),legend.position='none')
 
 p_distance<-ggplot(dat,aes(Geography,com_similarty)) + 
@@ -433,8 +442,8 @@ p_distance<-ggplot(dat,aes(Geography,com_similarty)) +
   geom_smooth(method="lm", size=1, se=T,colour='black') +
   facet_wrap( .~ taxa , scales="free",ncol = 2) +
   ylab('Community similarity')+xlab('Geographic distance(100km)')+
-  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
-        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+  theme(axis.title = element_text(size=9),axis.text = element_text(size=7),
+        strip.text = element_text(size = 9),legend.position='none',panel.grid = element_blank())
 
 p_ln.distance<-ggplot(dat,aes(log(Geography*100+1),com_similarty/100)) + 
   geom_point(shape=19,alpha=0.1,aes(colour = taxa))+
@@ -442,13 +451,13 @@ p_ln.distance<-ggplot(dat,aes(log(Geography*100+1),com_similarty/100)) +
   geom_smooth(method="lm", size=1, se=T,colour='black') +
   facet_wrap( .~ taxa , scales="free",ncol = 2) +
   ylab('Community similarity')+xlab('Ln(Geographic distance(km)+1)')+
-  theme(axis.title = element_text(size=11),axis.text = element_text(size=9),
-        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
+  theme(axis.title = element_text(size=9),axis.text = element_text(size=7),
+        strip.text = element_text(size = 9),legend.position='none',panel.grid = element_blank())
 
 library(cowplot)
 combine1<-plot_grid(p_dissimilarty,p_distance,
                     labels = c('(a)','(b)'), ncol = 2, label_x = .03,label_y = 1,
-                    rel_widths = c(2, 3),hjust = 0, label_size=11)
+                    rel_widths = c(2, 3),hjust = 0, label_size=8)
 combine1
 ```
 
@@ -479,7 +488,6 @@ sampling_effort_dd <- function(otu, depth, geo, method, niter){
   require(labdsv)
   slope_df <- data.frame('Slope_est'=as.numeric(), 'Std_er'=as.numeric(), 't_val'=as.numeric(), 'p'=as.numeric())
   for(i in 1:niter){
-    print(i)
     otu_rare <-suppressWarnings(rrarefy(otu, sample=depth))
     otu_rare <- otu_rare[which(rowSums(otu_rare) >= (0.95 *depth)),] 
     geo <- geo[which(row.names(geo) %in% row.names(otu_rare)),
@@ -538,23 +546,31 @@ slop_animal_rare280 <- sampling_effort_dd(animal.otu.table, 280, geo_dist, "bray
 slop_animal_rare150 <- sampling_effort_dd(animal.otu.table, 150, geo_dist, "bray", 100)
 slop_animal_rare100 <- sampling_effort_dd(animal.otu.table, 100, geo_dist, "bray", 100)
 
-#melt the data for boxplot
+#melt the data
 bac.slop <- data.frame(tax = rep('Bacteria', 300), 
-                  depth = c(rep(10000, 100), rep(7000, 100), rep(3500, 100)),
-                  Slope_est = c(slop_bac_rare10000$Slope_est, slop_bac_rare7000$Slope_est,
-                                slop_bac_rare3500$Slope_est))
+                       depth = factor(c(rep(10000, 100), rep(7000, 100), rep(3500, 100))),
+                       Slope_est = c(slop_bac_rare10000$Slope_est, slop_bac_rare7000$Slope_est,
+                                     slop_bac_rare3500$Slope_est))
+mode <- aov(Slope_est~depth, data = bac.slop)
+TukeyHSD(mode)
 fungi.slop <- data.frame(tax = rep('Fungi', 300), 
-                  depth = c(rep(2000, 100), rep(1500, 100), rep(800, 100)),
-                  Slope_est = c(slop_fungi_rare2000$Slope_est, slop_fungi_rare1500$Slope_est,
-                                slop_fungi_rare800$Slope_est))
+                         depth = factor(c(rep(2000, 100), rep(1500, 100), rep(800, 100))),
+                         Slope_est = c(slop_fungi_rare2000$Slope_est, slop_fungi_rare1500$Slope_est,
+                                       slop_fungi_rare800$Slope_est))
+mode <- aov(Slope_est~depth, data = fungi.slop)
+TukeyHSD(mode)
 protist.slop <- data.frame(tax = rep('Protist', 300), 
-                    depth = c(rep(550, 100), rep(400, 100), rep(250, 100)),
-                    Slope_est = c(slop_protist_rare550$Slope_est, slop_protist_rare400$Slope_est,
-                                  slop_protist_rare250$Slope_est))
+                           depth = factor(c(rep(550, 100), rep(400, 100), rep(250, 100))),
+                           Slope_est = c(slop_protist_rare550$Slope_est, slop_protist_rare400$Slope_est,
+                                         slop_protist_rare250$Slope_est))
+mode <- aov(Slope_est~depth, data = protist.slop)
+TukeyHSD(mode)
 animal.slop <- data.frame(tax = rep('Animal', 300), 
-                      depth = c(rep(280, 100), rep(150, 100), rep(100, 100)),
-                      Slope_est = c(slop_animal_rare280$Slope_est, slop_animal_rare150$Slope_est,
-                                    slop_animal_rare100$Slope_est))
+                          depth = factor(c(rep(280, 100), rep(150, 100), rep(100, 100))),
+                          Slope_est = c(slop_animal_rare280$Slope_est, slop_animal_rare150$Slope_est,
+                                        slop_animal_rare100$Slope_est))
+mode <- aov(Slope_est~depth, data = animal.slop)
+TukeyHSD(mode)
 slop_df <- data.frame(rbind(bac.slop, fungi.slop, protist.slop, animal.slop))
 slop_df$depth <- as.character(slop_df$depth)
 slop_df$depth <- factor(slop_df$depth, ordered = T,
@@ -564,7 +580,7 @@ slop_df$depth <- factor(slop_df$depth, ordered = T,
                                    '280', '150', '100'))
 slop_df$tax <- factor(slop_df$tax, ordered = T, 
                       levels = c('Bacteria', 'Fungi', 'Protist', 'Animal'))
-#plot
+#boxplot
 library(ggplot2)
 g_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
@@ -573,11 +589,11 @@ g_color_hue <- function(n) {
 n = 4
 cols = gg_color_hue(n)
 mytheme<-theme_bw()+
-  theme(axis.title = element_text(size = 14),
-        axis.text = element_text(size=12, colour = 'black'),
+  theme(axis.title = element_text(size = 9),
+        axis.text = element_text(size=7, colour = 'black'),
         panel.grid = element_blank(),
         #strip.background = element_rect(fill = 'skyblue'),
-        strip.text = element_text(size = 14))
+        strip.text = element_text(size = 9))
 
 p_rare_slope<-ggplot(slop_df,aes(x=depth,y=Slope_est))+
   geom_boxplot(width=0.3,aes(fill=tax))+
@@ -802,30 +818,28 @@ vp <- function(phylo){
   siteXspe <- t(otu_table(phylo))
   siteXspe <- as.matrix(siteXspe)
   env <- sample_data(phylo)
-  #n=round(0.8*nrow(siteXspe))
-  #sample.seeds<-sample(1:nrow(siteXspe), n, replace=F)
-  #M <- siteXspe[sample.seeds,]
   env_vars<-env[,-c(1:4)]
   Geography_vars<-env[,c(1:2)]
   otu_tab <- decostand(siteXspe, 'hellinger')
   commu.dist<-vegdist(otu_tab, 'bray',upper=F)
   pcnm_vars <- (pcnm(dist(Geography_vars)))$vectors
-  env_dist<-env_vars[,SelectionDistResponseReg(commu.dist,env_vars,999,0.05)$Selected_Variables]
-  geo_dist<-pcnm_vars[,SelectionDistResponseReg(commu.dist,pcnm_vars,999,0.05)$Selected_Variables]
-  # check collinearities among selected variables
-  env_df <- as.matrix(env_dist)
-  env <- decostand(env_df,"standardize")
-  geo <- as.matrix(geo_dist)
-  all.vars <- data.frame(env, geo)
+  # check collinearities among all variables
+  env_df <- as.matrix(env_vars)
+  env_df <- decostand(env_df,"standardize")
+  pcnm_df <- as.matrix(pcnm_vars)
+  all.vars <- data.frame(env_df, pcnm_df)
   ord <- dbrda(otu_tab~., all.vars)
   ord.vif <- vif.cca(ord)
   #remove the varibles with vif >20
   all.vars <- all.vars[,names(ord.vif[ord.vif < 20])]
-  env_sel_vars <- env_dist[,c(intersect(colnames(env_dist),colnames(all.vars)))]
-  geo_sel_vars <- geo_dist[,c(intersect(colnames(geo_dist),colnames(all.vars)))]
+  env_mat <- env_df[,c(intersect(colnames(env_df),colnames(all.vars)))]
+  pcnm_mat <- pcnm_df[,c(intersect(colnames(pcnm_df),colnames(all.vars)))]
+  #variables selection
+  env_sel_vars<-env_mat[,SelectionDistResponseReg(commu.dist, env_mat,999,0.05)$Selected_Variables]
+  pcnm_sel_vars<-pcnm_mat[,SelectionDistResponseReg(commu.dist, pcnm_mat,999,0.05)$Selected_Variables]
   #conduct VPA
-  vp<-VarPartDistResponse(commu.dist,env_sel_vars,geo_sel_vars,999)
-  results<-list(vp,env_sel_vars,geo_sel_vars)
+  vp<-VarPartDistResponse(commu.dist,env_sel_vars,pcnm_sel_vars,999)
+  results<-list(vp,env_sel_vars,pcnm_sel_vars)
   return(results)
 }
 
@@ -835,28 +849,28 @@ vp.protists<-vp(protist.phylo)
 vp.animal<-vp(animal.phylo)
 
 bacteria_vp<-vp.bacteria[[1]]
-bacteria_env_dist<-vp.bacteria[[2]]
-bacteria_geo_dist<-vp.bacteria[[3]]
-colnames(bacteria_env_dist)
-colnames(bacteria_geo_dist)
+bacteria_env_df<-vp.bacteria[[2]]
+bacteria_geo_df<-vp.bacteria[[3]]
+colnames(bacteria_env_df)
+colnames(bacteria_geo_df)
 
 fungi_vp<-vp.fungi[[1]]
-fungi_env_dist<-vp.fungi[[2]]
-fungi_geo_dist<-vp.fungi[[3]]
-colnames(fungi_env_dist)
-colnames(fungi_geo_dist)
+fungi_env_df<-vp.fungi[[2]]
+fungi_geo_df<-vp.fungi[[3]]
+colnames(fungi_env_df)
+colnames(fungi_geo_df)
 
 protists_vp<-vp.protists[[1]]
-protists_env_dist<-vp.protists[[2]]
-protists_geo_dist<-vp.protists[[3]]
-colnames(protists_env_dist)
-colnames(protists_geo_dist)
+protists_env_df<-vp.protists[[2]]
+protists_geo_df<-vp.protists[[3]]
+colnames(protists_env_df)
+colnames(protists_geo_df)
 
 animal_vp<-vp.animal[[1]]
-animal_env_dist<-vp.animal[[2]]
-animal_geo_dist<-vp.animal[[3]]
-colnames(animal_env_dist)
-colnames(animal_geo_dist)
+animal_env_df<-vp.animal[[2]]
+animal_geo_df<-vp.animal[[3]]
+colnames(animal_env_df)
+colnames(animal_geo_df)
 
 #plot
 #first, variable partition plot
@@ -873,26 +887,45 @@ vp.dat$taxa<-factor(vp.dat$taxa,ordered = T,
                     levels=c('Bacteria','Fungi','Protists','Animal'))
 
 melted <- melt(vp.dat, id.vars=c("taxa"))
+vp.dat <- melted[1:12, ]
+sdr.dat <- melted[13:16, ]
 
+# Stacked plot for vpa
+#set color
 gg_color_hue <- function(n) {
   hues = seq(15, 375, length = n + 1)
   hcl(h = hues, l = 65, c = 100)[1:n]
 }
 n = 4
-cols = gg_color_hue(n)
-cols16<-rep(cols,4)
-vp.plot<-ggplot(melted,aes(taxa,value)) + 
-  geom_bar(stat = 'identity',aes(fill=taxa), width = 0.8)+
-  scale_fill_manual(values=cols)+
+cols = gg_color_hue(4)
+vp.plot<-ggplot(vp.dat, aes(fill= variable, y=value, x=taxa)) +
+  geom_bar(position="stack", stat="identity", width = 0.75)+
+  #scale_fill_manual(values=cols)+
+  xlab('Taxa')+ylab('Explained variation (%)')+
   scale_x_discrete(limits=c('Bacteria','Fungi','Protists','Animal'))+
-  #scale_y_continuous(expand = c(0,0))+
-  facet_wrap( .~ variable , scales="free_y",ncol = 2) +
-  theme(axis.title = element_text(size=14),axis.text = element_text(size=12, colour = 'black'),
-        strip.text = element_text(size = 14),legend.position='none',panel.grid = element_blank())
-vp.plot  
+  theme(axis.title = element_text(size=9),
+        axis.text = element_text(size=7, colour = 'black'),
+        strip.text = element_text(size = 9),legend.position=c(0.70, 0.85),
+        panel.grid = element_blank())
 
+#barplot for Sorting/dispersal effect ratio
+sdr.plot<-ggplot(sdr.dat,aes(x=taxa, y=value)) +
+  geom_bar(stat = 'identity',aes(fill='a1caf1'), width = 0.75)+
+  scale_fill_manual(values=cols)+
+  xlab('Taxa')+ylab('Sorting/dispersal effect ratio')+
+  scale_x_discrete(limits=c('Bacteria','Fungi','Protists','Animal'))+
+  theme(axis.title = element_text(size=9),
+        axis.text = element_text(size=7, colour = 'black'),
+        strip.text = element_text(size = 9),legend.position ='none',
+        panel.grid = element_blank())
+library(cowplot)
+plot_grid(vp.plot, sdr.plot,
+          labels = c("(a)", "(b)"), ncol = 2, nrow = 1, label_x = .01,
+          label_y = 1.005,hjust = 0, label_size=8,align = "v")
+```
 
-# dbRDA plot with color fradient for AI
+# distance-based redundancy analysis (dbRDA) and plot with color gradient for AI
+```{r}
 beta_dbrda <- function(phylo, env_df, geo_df) {
   p_list=c("ggplot2", "vegan", "ggrepel")
   for(p in p_list){
@@ -911,373 +944,44 @@ beta_dbrda <- function(phylo, env_df, geo_df) {
   vare_spp_sco <- scores(ord, display = "species")
   vare_sam_sco <- scores(ord, display = "sites")
   vare_env_sco <- scores(ord, display = "bp")
-  vare_env_sco <- vare_env_sco[which(mode$`Pr(>F)` < 0.01),]
-  points <- data.frame(vare_sam_sco,bacteia_env_dist$AI)
+  vare_env_sco <- vare_env_sco[which(mode$`Pr(>F)` < 0.05),]
+  points <- data.frame(vare_sam_sco,data.frame(sample_data(phylo))$AI)
   colnames(points)=c("x", "y", 'AI')
   fit_coord_cont <- data.frame(vare_env_sco, variables = rownames(vare_env_sco))
   ggplot(data = points, aes(x = x, y = y)) + 
-    geom_point(data = points, aes(colour = AI), size = 3.5, alpha = 0.8) + 
+    geom_point(data = points, aes(colour = AI), size = 1, alpha = 0.8) + 
     scale_colour_gradientn(colours = terrain.colors(10))+
     geom_segment(data = fit_coord_cont,
                  aes(x = 0, xend = dbRDA1*1.8, y = 0, yend = dbRDA2*1.8),
                  arrow = arrow(length = unit(0.25, "cm")), colour = "grey", lwd = 0.5) +
     geom_text(data = fit_coord_cont, aes(x = dbRDA1*1.8, y = dbRDA2*1.8, label = variables), colour = "black", 
-              size = 4.5) +
+              size = 1) +
     labs(x=paste("dbRDA1 (", format(100 * eig[1] / sum(eig), digits=4), "%)", sep=""),
          y=paste("dbRDA2 (", format(100 * eig[2] / sum(eig), digits=4), "%)", sep="")) +
-    theme(axis.title = element_text(size = 14, colour = "black"),
-          axis.text = element_text(size = 12, colour = "black"),
+    theme(axis.title = element_text(size = 9, colour = "black"),
+          axis.text = element_text(size = 7, colour = "black"),
+          legend.title = element_text(size = 8),
+          legend.text = element_text(size = 7),
           panel.grid = element_blank(),
           panel.background = element_blank(), 
           panel.border = element_rect(fill = NA, colour = "black"))
 }
 
-p1 <- beta_dbrda(bac.phylo, bacteia_env_dist, bacteria_geo_dist)
-p2 <- beta_dbrda(fungi.phylo, fungi_env_dist, fungi_geo_dist)
-p3 <- beta_dbrda(protist.phylo, protists_env_dist, protists_geo_dist)
-p4 <- beta_dbrda(animal.phylo, animal_env_dist, animal_geo_dist)
+p1 <- beta_dbrda(bac.phylo, bacteria_env_df, bacteria_geo_df)
+p2 <- beta_dbrda(fungi.phylo, fungi_env_df, fungi_geo_df)
+p3 <- beta_dbrda(protist.phylo, protists_env_df, protists_geo_df)
+p4 <- beta_dbrda(animal.phylo, animal_env_df, animal_geo_df)
 
 library(cowplot)
 plot_grid(p1, p2, p3, p4,
           labels = c("(a)", "(b)", "(c)", "(d)"), ncol = 2, nrow = 2, label_x = .01,
-          label_y = 1.005,hjust = 0, label_size=15,align = "v")
+          label_y = 1.005,hjust = 0, label_size=8,align = "v")
 ```
 
-## Partial mantel test
-```{r}
-#the relationship between geo dist with community dist after control env dist
-mantel.partial(geo_dist, bacteria.dis.tab[[2]], env_dist, method = "spearman")
-
-mantel.partial(geo_dist, fungi.dis.tab[[2]], env_dist, method = "spearman")
-
-mantel.partial(geo_dist, protist.dis.tab[[2]], env_dist, method = "spearman")
-
-mantel.partial(geo_dist, animal.dis.tab[[2]], env_dist, method = "spearman")
-
-#the relationship between env dist with community dist after control geo dist
-mantel.partial(env_dist, bacteria.dis.tab[[2]], geo_dist,method="spearman")
-
-mantel.partial(env_dist, fungi.dis.tab[[2]], geo_dist, method = "spearman")
-
-mantel.partial(env_dist, protist.dis.tab[[2]], geo_dist, method = "spearman")
-
-mantel.partial(env_dist, animal.dis.tab[[2]], geo_dist, method = "spearman")
-
-
-```
-
-# Neutral community model
-neutral community model for migration ratio
-```{r}
-Neutral.fit <- function(phylo, stats=TRUE){
-  comun <- as.matrix(t(otu_table(phylo)))
-  require(minpack.lm)
-  require(Hmisc)
-  require(stats4)
-  options(warn=-1)
-  
-  #Calculate the number of individuals per community
-  N <- mean(apply(comun, 1, sum))
-  
-  #Calculate the average relative abundance of each taxa across communities
-  p.m <- apply(comun, 2, mean)
-  p.m <- p.m[p.m != 0]
-  p <- p.m/N
-  
-  #Calculate the occurrence frequency of each taxa across communities
-  comun.bi <- 1*(comun>0)
-  freq <- apply(comun.bi, 2, mean)
-  freq <- freq[freq != 0]
-  
-  #Combine
-  C <- merge(p, freq, by=0)
-  C <- C[order(C[,2]),]
-  C <- as.data.frame(C)
-  C.0 <- C[!(apply(C, 1, function(y) any(y == 0))),]
-  p <- C.0[,2]
-  freq <- C.0[,3]
-  names(p) <- C.0[,1]
-  names(freq) <- C.0[,1]
-  
-  #Calculate the limit of detection
-  d = 1/N
-  
-  ##Fit model parameter m (or Nm) using Non-linear least squares (NLS)
-  m.fit <- nlsLM(freq ~ pbeta(d, N*m*p, N*m*(1-p), lower.tail=FALSE), start=list(m=0.1))
-  m.ci <- confint(m.fit, 'm', level=0.95)
-  
-  ##Fit neutral model parameter m (or Nm) using Maximum likelihood estimation (MLE)
-  sncm.LL <- function(m, sigma){
-    R = freq - pbeta(d, N*m*p, N*m*(1-p), lower.tail=FALSE)
-    R = dnorm(R, 0, sigma)
-    -sum(log(R))
-  }
-  m.mle <- mle(sncm.LL, start=list(m=0.1, sigma=0.1), nobs=length(p))
-  
-  ##Calculate Akaike's Information Criterion (AIC)
-  aic.fit <- AIC(m.mle, k=2)
-  bic.fit <- BIC(m.mle)
-  
-  ##Calculate goodness-of-fit (R-squared and Root Mean Squared Error)
-  freq.pred <- pbeta(d, N*coef(m.fit)*p, N*coef(m.fit)*(1-p), lower.tail=FALSE)
-  Rsqr <- 1 - (sum((freq - freq.pred)^2))/(sum((freq - mean(freq))^2))
-  RMSE <- sqrt(sum((freq-freq.pred)^2)/(length(freq)-1))
-  
-  pred.ci <- binconf(freq.pred*nrow(comun), nrow(comun), alpha=0.05, method="wilson", return.df=TRUE)
-  
-  ###create a dataframe for plot
-  bacnlsALL <-data.frame(p,freq,freq.pred,pred.ci[,2:3])
-  
-  ##Calculate AIC for binomial model
-  bino.LL <- function(mu, sigma){
-    R = freq - pbinom(d, N, p, lower.tail=FALSE)
-    R = dnorm(R, mu, sigma)
-    -sum(log(R))
-  }
-  bino.mle <- mle(bino.LL, start=list(mu=0, sigma=0.1), nobs=length(p))
-  
-  aic.bino <- AIC(bino.mle, k=2)
-  bic.bino <- BIC(bino.mle)
-  
-  ##Goodness of fit for binomial model
-  bino.pred <- pbinom(d, N, p, lower.tail=FALSE)
-  Rsqr.bino <- 1 - (sum((freq - bino.pred)^2))/(sum((freq - mean(freq))^2))
-  RMSE.bino <- sqrt(sum((freq - bino.pred)^2)/(length(freq) - 1))
-  
-  bino.pred.ci <- binconf(bino.pred*nrow(comun), nrow(comun), alpha=0.05, method="wilson", return.df=TRUE)
-  
-  ##Results
-  if(stats==TRUE){
-    fitstats <- data.frame(m=numeric(), m.ci=numeric(), m.mle=numeric(), maxLL=numeric(), binoLL=numeric(), Rsqr=numeric(), Rsqr.bino=numeric(), RMSE=numeric(), RMSE.bino=numeric(), AIC=numeric(), BIC=numeric(), AIC.bino=numeric(), BIC.bino=numeric(), N=numeric(), Samples=numeric(), Richness=numeric(), Detect=numeric())
-    fitstats[1,] <- c(coef(m.fit), coef(m.fit)-m.ci[1], m.mle@coef['m'], m.mle@details$value, bino.mle@details$value, Rsqr, Rsqr.bino, RMSE, RMSE.bino, aic.fit, bic.fit, aic.bino, bic.bino, N, nrow(comun), length(p), d)
-    results1=list(fitstats,bacnlsALL,m.fit,N)
-    return(results1)
-  } else {
-    A <- cbind(p, freq, freq.pred, pred.ci[,2:3], bino.pred, bino.pred.ci[,2:3])
-    A <- as.data.frame(A)
-    colnames(A) <- c('p', 'freq', 'freq.pred', 'pred.lwr', 'pred.upr', 'bino.pred', 'bino.lwr', 'bino.upr')
-    B <- A[order(A[,1]),]
-    results2=list(B,bacnlsALL,m.fit,N)
-    return(results2)
-  }
-}
-Neutral.bacteria.model<-Neutral.fit(bac.phylo)
-Neutral.fungi.model<-Neutral.fit(fungi.phylo)
-Neutral.protists.model<-Neutral.fit(protist.phylo)
-Neutral.animal.model<-Neutral.fit(animal.phylo)
-
-All.neutral.models<-cbind(taxa=c('Bacteria','Fungi','Protists','Animal'),
-                          rbind(Neutral.bacteria.model[[1]],Neutral.fungi.model[[1]],
-                                Neutral.protists.model[[1]],Neutral.animal.model[[1]]))
-All.neutral.models
-
-bacteria.bacnlsALL<-Neutral.bacteria.model[[2]]
-fungi.bacnlsALL<-Neutral.fungi.model[[2]]
-protists.bacnlsALL<-Neutral.protists.model[[2]]
-animal.bacnlsALL<-Neutral.animal.model[[2]]
-
-##
-bacteria.lower<-subset(bacteria.bacnlsALL,bacteria.bacnlsALL$freq <= bacteria.bacnlsALL$Lower)
-bacteria.neutral<-subset(bacteria.bacnlsALL,bacteria.bacnlsALL$freq >= bacteria.bacnlsALL$Lower & bacteria.bacnlsALL$freq <= bacteria.bacnlsALL$Upper)
-bacteria.Upper<-subset(bacteria.bacnlsALL,bacteria.bacnlsALL$freq >= bacteria.bacnlsALL$Upper)
-
-##
-fungi.lower<-subset(fungi.bacnlsALL,fungi.bacnlsALL$freq <= fungi.bacnlsALL$Lower)
-fungi.neutral<-subset(fungi.bacnlsALL,fungi.bacnlsALL$freq >= fungi.bacnlsALL$Lower & fungi.bacnlsALL$freq <= fungi.bacnlsALL$Upper)
-fungi.Upper<-subset(fungi.bacnlsALL,fungi.bacnlsALL$freq >= fungi.bacnlsALL$Upper)
-
-##
-protists.lower<-subset(protists.bacnlsALL,protists.bacnlsALL$freq <= protists.bacnlsALL$Lower)
-protists.neutral<-subset(protists.bacnlsALL,protists.bacnlsALL$freq >= protists.bacnlsALL$Lower & protists.bacnlsALL$freq <= protists.bacnlsALL$Upper)
-protists.Upper<-subset(protists.bacnlsALL,protists.bacnlsALL$freq >= protists.bacnlsALL$Upper)
-
-##
-animal.lower<-subset(animal.bacnlsALL,animal.bacnlsALL$freq <= animal.bacnlsALL$Lower)
-animal.neutral<-subset(animal.bacnlsALL,animal.bacnlsALL$freq >= animal.bacnlsALL$Lower & animal.bacnlsALL$freq <= animal.bacnlsALL$Upper)
-animal.Upper<-subset(animal.bacnlsALL,animal.bacnlsALL$freq >= animal.bacnlsALL$Upper)
-
-# plot
-draw.fun<-function(Neutral.model){
-  bacnlsALL=Neutral.model[[2]]
-  m.fit=Neutral.model[[3]]
-  N=Neutral.model[[4]]
-  inter.col<-rep('pink',nrow(bacnlsALL))
-  inter.col[bacnlsALL$freq <= bacnlsALL$Lower]<-'#A52A2A'#define the color of below points
-  inter.col[bacnlsALL$freq >= bacnlsALL$Upper]<-'#29A6A6'#define the color of up points
-  library(grid)
-  grid.newpage()
-  pushViewport(viewport(h=0.6,w=0.6))
-  pushViewport(dataViewport(xData=range(log10(bacnlsALL$p)), yData=c(0,1.02),extension=c(0.02,0)))
-  grid.rect()
-  grid.points(log10(bacnlsALL$p), bacnlsALL$freq,pch=20,gp=gpar(col=inter.col,cex=0.7))
-  grid.yaxis()
-  grid.xaxis()
-  grid.lines(log10(bacnlsALL$p),bacnlsALL$freq.pred,gp=gpar(col='blue',lwd=2),default='native')
-  
-  grid.lines(log10(bacnlsALL$p),bacnlsALL$Lower ,gp=gpar(col='blue',lwd=2,lty=2),default='native') 
-  grid.lines(log10(bacnlsALL$p),bacnlsALL$Upper,gp=gpar(col='blue',lwd=2,lty=2),default='native')  
-  grid.text(y=unit(0,'npc')-unit(2.5,'lines'),label='Mean Relative Abundance (log10)', gp=gpar(fontface=2)) 
-  grid.text(x=unit(0,'npc')-unit(3,'lines'),label='Frequency of Occurance',gp=gpar(fontface=2),rot=90) 
-  #grid.text(x=unit(0,'npc')-unit(-1,'lines'), y=unit(0,'npc')-unit(-15,'lines'),label='Mean Relative Abundance (log)', gp=gpar(fontface=2)) 
-  #grid.text(round(coef(m.fit)*N),x=unit(0,'npc')-unit(-5,'lines'), y=unit(0,'npc')-unit(-15,'lines'),gp=gpar(fontface=2)) 
-  #grid.text(label = "Nm=",x=unit(0,'npc')-unit(-3,'lines'), y=unit(0,'npc')-unit(-15,'lines'),gp=gpar(fontface=2))
-  #grid.text(round(Rsqr,2),x=unit(0,'npc')-unit(-5,'lines'), y=unit(0,'npc')-unit(-16,'lines'),gp=gpar(fontface=2))
-  #grid.text(label = "Rsqr=",x=unit(0,'npc')-unit(-3,'lines'), y=unit(0,'npc')-unit(-16,'lines'),gp=gpar(fontface=2))
-  Rsqr <- 1 - (sum((bacnlsALL$freq - bacnlsALL$freq.pred)^2))/(sum((bacnlsALL$freq - mean(bacnlsALL$freq))^2))
-  draw.text <- function(just, i, j) {
-    grid.text(paste("Rsqr=",round(Rsqr,3),"\n","Nm=",round(coef(m.fit)*N)), x=x[j], y=y[i], just=just)
-    #grid.text(deparse(substitute(just)), x=x[j], y=y[i] + unit(2, "lines"),
-    #          gp=gpar(col="grey", fontsize=8))
-  }
-  x <- unit(1:4/5, "npc")
-  y <- unit(1:4/5, "npc")
-  draw.text(c("centre", "bottom"), 4, 1)
-}
-
-draw.fun(Neutral.bacteria.model)
-draw.fun(Neutral.fungi.model)
-draw.fun(Neutral.protists.model)
-draw.fun(Neutral.animal.model)
-
-```
-
-# Nich analysis
-```{r}
-Com.niche <- function(phylo, stats=TRUE){
-  require(spaa)
-  comun <- t(data.frame(otu_table(phylo)))
-  comun<-comun[,colSums(comun)>0]
-  B<-niche.width(comun,method="levins")
-  B_com<-1:nrow(comun)
-  for(i in 1:nrow(comun)){
-    a<-comun[i,]
-    a<-a[a>0]
-    B_com[i]<-mean(as.numeric(B[,names(a)]))
-  }
-  return(B_com)
-}
-
-bacteria.niche<-Com.niche(bac.phylo)
-fungi.niche<-Com.niche(fungi.phylo)
-protists.niche<-Com.niche(protist.phylo)
-animal.niche<-Com.niche(animal.phylo)
-
-library(reshape)
-library(plyr)
-meta.niche<-data.frame(sample=c(1:147),Bacteria=bacteria.niche,
-                       Fungi=fungi.niche,Protists=protists.niche,
-                       Animal=animal.niche,stringsAsFactors = F)
-melted <- melt(meta.niche, id.vars=c("sample"))
-
-ddply(melted, c("variable"), summarise,
-      mean = mean(value), sd = sd(value),
-      se = sd(value)/sqrt(length(value)))
-
-mode_ln<-aov(value~variable,melted)
-summary(mode_ln)
-TukeyHSD(mode_ln)$variable
-
-#then, niche plot
-melted$variable<-factor(melted$variable,ordered = T,levels = c('Bacteria','Protists','Animal','Fungi'))
-
-
-niche.p<-ggplot(melted,aes(x=variable,y=value))+
-  geom_violin(trim=T,aes(fill=variable))+
-  scale_fill_manual(values=cols)+
-  geom_boxplot(width=0.1,fill='white')+
-  ylab('Habitat niche breadth (Bcom)')+
-  scale_x_discrete(limits=c('Bacteria','Protists','Animal','Fungi'))+
-  theme(axis.title.x = element_blank(),axis.title.y = element_text(size=11),
-        axis.text = element_text(size=9),
-        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
-
-#migration ratio plot
-m<-data.frame(taxa=c('Bacteria','Fungi','Protists','Animal'),
-              m=c(0.612253,0.103691,0.350818,0.101444))
-m$taxa<-factor(m$taxa,ordered = T,levels = c('Bacteria','Protists','Animal','Fungi'))
-m.plot<-ggplot(m,aes(x=taxa, y=m,group = 1)) +
-  geom_bar(stat = 'identity',aes(fill=taxa))+
-  scale_fill_manual(values=cols)+
-  xlab('Taxa')+ylab('Migration ratio')+
-  scale_x_discrete(limits=c('Bacteria','Protists','Animal','Fungi'))+
-  theme(axis.title = element_text(size=11),
-        axis.text = element_text(size=9),
-        strip.text = element_text(size = 10),legend.position='none',panel.grid = element_blank())
-
-#combine all plots
-library(cowplot)
-
-ggdraw() +
-  draw_plot(vp.plot, x =0, y = 0, width = 0.65, height = 1) +
-  draw_plot(niche.p, x = 0.65, y = 0.5, width = .35, height = .5) +
-  draw_plot(m.plot, x = 0.65, y = 0, width = .35, height = .5) +
-  draw_plot_label(label = c("(a)", "(b)", "(c)"), size = 11,
-                  x = c(0, 0.65, 0.65), y = c(1, 1, 0.5))
-```
-
-# NST
-Determine the NST of each taxa
-```{r}
-nst.cal <- function(phylo) {
-  require(NST)
-  group<-data.frame(c(rep('all',147)))
-  comm=t(otu_table(phylo))
-  rownames(group)<-rownames(comm)
-  tnst=tNST(comm, group=group, dist.method="jaccard",
-                     abundance.weighted=TRUE, rand=100,output.rand = T,
-                     nworker=4, null.model="PF", between.group=F,
-                     SES=T, RC=T)
-  nst.bt=nst.boot(nst.result=tnst, group=NULL, rand=99,
-                           trace=TRUE, two.tail=FALSE, out.detail=T,
-                           between.group=FALSE, nworker=1)
-  NST <- nst.bt$detail$NST.boot$all
-  
-}
-
-NST.bacteria <- nst.cal(bac.phylo)
-NST.fungi <- nst.cal(fungi.phylo)
-NST.protist <- nst.cal(protist.phylo)
-NST.animal <- nst.cal(animal.phylo)
-
-nst<-data.frame(Taxa=c(rep('Bacteria',100),rep('Fungi',100),
-                       rep('Protists',100),rep('Animal',100)),
-                NST=c(NST.bacteria,NST.fungi,NST.protist,NST.animal))
-
-
-#Multiple comparison
-library(plyr)
-ddply(nst, c("Taxa"), summarise,
-      mean = mean(NST), sd = sd(NST),
-      se = sd(NST)/sqrt(length(NST)))
-nst.aov <- aov(NST ~ Taxa, data = nst)
-TukeyHSD(nst.aov)
-
-#plot
-library(ggplot2)
-nst$Taxa<-factor(nst$Taxa,ordered = T,levels = c('Bacteria','Protists','Animal','Fungi'))
-nst.p<-ggplot(nst,aes(x=Taxa,y=NST*100))+
-  geom_violin(trim=T,aes(fill=Taxa))+
-  scale_fill_manual(values=cols)+
-  geom_boxplot(width=0.1,fill='white')+
-  xlab('Taxa')+ylab('NST (%)')+
-  scale_x_discrete(limits=c('Bacteria','Protists','Animal','Fungi'))+
-  theme(axis.title = element_text(size=12),axis.text = element_text(size=11),
-        legend.position='none',panel.grid = element_blank())
-nst.p
-```
 
 # NULL model analysis
 ```{r}
-#function for extract the most abundant ASVs
-filter.rel <- function(phylo) {
-  require(phyloseq)
-  comun <- otu_table(phylo)
-  ra <-rowSums(comun)/sum(comun)
-  otu_tab<- comun[ra >= 0.0002, ]
-  otu_tab <- data.frame(t(otu_tab))
-  return(otu_tab)
-}
-
+#function for extract the most 1000 abundant ASVs
 filter.abun <- function(phylo, N) {
   require(phyloseq)
   comun <- otu_table(phylo)
@@ -1536,8 +1240,8 @@ bNTI_freq_plot<-ggplot(bNTI_all, aes(bNTI,fill = taxa)) +
   scale_fill_manual(values=c(cols[1],cols[2],cols[3],cols[4]))+
   ylab('Frequency')+xlab('βNTI')+
   theme_bw()+
-  theme(axis.title = element_text(size=14),axis.text = element_text(size=12, colour = 'black'),
-        strip.text = element_text(size = 14),legend.position='none',panel.grid = element_blank())
+  theme(axis.title = element_text(size=9),axis.text = element_text(size=7, colour = 'black'),
+        strip.text = element_text(size = 9),legend.position='none',panel.grid = element_blank())
 bNTI_freq_plot
 
 #pie plot for the proportion of each process
@@ -1561,6 +1265,8 @@ doughnut.plot<-function(data){
     coord_polar(theta = "y", start = 0)+
     geom_text(aes(y = lab.ypos, label = Proportion), color = "black")+
     scale_fill_manual(values = mycols) +
+    theme(legend.title = element_text(size = 8),
+          legend.text = element_text(size = 7))+
     theme_void()+
     xlim(0.5, 2.5)
   return(p)
@@ -1575,4 +1281,5 @@ library(cowplot)
 plot_grid(B.doug,F.doug,P.doug,A.doug,
           labels = "auto", ncol = 2, nrow = 2, label_x = .01, 
           label_y = 1.005,hjust = 0, label_size=17,align = "v")
+
 ```
