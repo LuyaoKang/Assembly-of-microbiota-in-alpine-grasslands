@@ -114,7 +114,7 @@ raup_crick= function(comun, reps=9){
         rm('com1.samp.sp','com1.sp.counts');			
         ##same for com2:
         com2[sample(1:gamma, sum(comun.inc[null.two,]), replace = FALSE, prob = occur)]<-1
-        com2.samp.sp = sample(which(com2>0),(sum(comun[null.two,])-sum(com2)),replace=TRUE,prob=abundance[which(com2>0)]);
+        com2.samp.sp = sample(which(com2>0),(sum(comun[null.two,])-sum(com2)),replace = TRUE, prob = abundance[which(com2>0)]);
         com2.samp.sp = cbind(com2.samp.sp,1); # head(com2.samp.sp);
         com2.sp.counts = as.data.frame(tapply(com2.samp.sp[,2], com2.samp.sp[,1], FUN = sum)); colnames(com2.sp.counts) = 'counts'; # head(com2.sp.counts);
         com2.sp.counts$sp = as.numeric(rownames(com2.sp.counts)); # head(com2.sp.counts);
@@ -143,25 +143,26 @@ raup_crick= function(comun, reps=9){
   return(results)
 }
 
+
 #calculate the βNTI and RC_bray, this procedure is excessively time consuming. 
 #In our study, it spent about half a month to finish this procedure.
 
 #Beta_NTI_bacteria<-Beta_NTI(bacteria.tree, filter.bac.tab)
 #Beta_NTI_bacteria_1000 <- as.matrix(Beta_NTI_bacteria)
-#write.csv(Beta_NTI_bacteria_1000,"./result/null_model/bacteria.weighted_bNTI_1000.csv",quote=F);
+#write.csv(Beta_NTI_bacteria_1000,"./result/null_model/bacteria_bNTI_1000.csv",quote=F);
 
 #Beta_NTI_fungi<-Beta_NTI(fungi.tree, filter.fun.tab)
 #Beta_NTI_fungi_1000 <- as.matrix(Beta_NTI_fungi)
-#write.csv(Beta_NTI_fungi_1000,"./result/null_model/fungi.weighted_bNTI_1000.csv",quote=F);
+#write.csv(Beta_NTI_fungi_1000,"./result/null_model/fungi_bNTI_1000.csv",quote=F);
 
 #protist
 #Beta_NTI_protists<-Beta_NTI(animal.tree, filter.anim.tab)
 #Beta_NTI_protists_1000 <- as.matrix(Beta_NTI_protists)
-#write.csv(Beta_NTI_protists_1000,"./result/null_model/protists.weighted_bNTI_1000.csv",quote=F);
+#write.csv(Beta_NTI_protists_1000,"./result/null_model/protists_bNTI_1000.csv",quote=F);
 
 #Beta_NTI_animal<-Beta_NTI(animal.tree, filter.anim.tab)
 #Beta_NTI_animal_1000 <- as.matrix(Beta_NTI_animal)
-#write.csv(b_NTI_animal_1000,"./result/null_mode/animal.weighted_bNTI_1000.csv",quote=F);
+#write.csv(b_NTI_animal_1000,"./result/null_mode/animal_bNTI_1000.csv",quote=F);
 
 #calculate the RC_bray
 #rcbray_bacteria<-raup_crick(filter.bac.tab)
@@ -181,18 +182,17 @@ raup_crick= function(comun, reps=9){
 #write.csv(rcbray_animal_1000,"./result/null_model/animal/raup_crick_animal_1000.csv",quote=F);
 
 #read βNTI and RC_bray matrixes
-Beta_NTI_bacteria<-read.csv("./result/null_model/bacteria.weighted_bNTI_1000.csv",header=T,row.names=1,stringsAsFactors=F);
-rcbray_bacteria<-read.csv("./result/null_model/raup_crick_bacteria_1000.csv",header=T,row.names=1,stringsAsFactors=F);
+Beta_NTI_bacteria <- read.csv("./result/null_model/bacteria_bNTI_1000.csv", header = T, row.names = 1, stringsAsFactors = F);
+rcbray_bacteria <- read.csv("./result/null_model/raup_crick_bacteria_1000.csv", header = T, row.names = 1, stringsAsFactors = F);
 
-Beta_NTI_fungi<-read.csv("./result/null_model/fungi.weighted_bNTI_1000.csv",header=T,row.names=1,stringsAsFactors=F);
-rcbray_fungi<-read.csv("./result/null_model/raup_crick_fungi_1000.csv",header=T,row.names=1,stringsAsFactors=F);
+Beta_NTI_fungi <- read.csv("./result/null_model/fungi_bNTI_1000.csv", header = T, row.names = 1, stringsAsFactors = F);
+rcbray_fungi <- read.csv("./result/null_model/raup_crick_fungi_1000.csv", header = T, row.names = 1, stringsAsFactors = F);
 
-Beta_NTI_protists<-read.csv("./result/null_model/protist.weighted_bNTI_1000.csv",header=T,row.names=1,stringsAsFactors=F);
-rcbray_protists<-read.csv("./result/null_model/raup_crick_protists_1000.csv",header=T,row.names=1,stringsAsFactors=F);
+Beta_NTI_protists <- read.csv("./result/null_model/protist_bNTI_1000.csv", header = T, row.names = 1, stringsAsFactors = F);
+rcbray_protists <- read.csv("./result/null_model/raup_crick_protists_1000.csv", header = T, row.names = 1, stringsAsFactors = F);
 
-Beta_NTI_animal<-read.csv("./result/null_model/animal.weighted_bNTI_1000.csv",header=T,row.names=1,stringsAsFactors=F);
-rcbray_animal<-read.csv("./result/null_model/raup_crick_animal_1000.csv",header=T,row.names=1,stringsAsFactors=F);
-
+Beta_NTI_animal <- read.csv("./result/null_model/animal_bNTI_1000.csv", header = T, row.names = 1, stringsAsFactors = F);
+rcbray_animal <- read.csv("./result/null_model/raup_crick_animal_1000.csv", header = T, row.names = 1, stringsAsFactors = F);
 #determine the relative contribution of each process in shaping community
 null.index <- function(bNTI.df, rcbray.df){
   bNTI.dist <- as.dist(bNTI.df)
@@ -290,12 +290,12 @@ doughnut.plot<-function(data){
   return(p)
 }
 
-B.doug<-doughnut.plot(bacteria.null)
-F.doug<-doughnut.plot(fungi.null)
-P.doug<-doughnut.plot(protists.null)
-A.doug<-doughnut.plot(animal.null)
+B.doug <- doughnut.plot(bacteria.null)
+F.doug <- doughnut.plot(fungi.null)
+P.doug <- doughnut.plot(protists.null)
+A.doug <- doughnut.plot(animal.null)
 
 library(cowplot)
 plot_grid(B.doug, F.doug, P.doug, A.doug,
           labels = "auto", ncol = 2, nrow = 2, label_x = .01, 
-          label_y = 1.005,hjust = 0, label_size = 17, align = "v")
+          label_y = 1.005, hjust = 0, label_size = 17, align = "v")
