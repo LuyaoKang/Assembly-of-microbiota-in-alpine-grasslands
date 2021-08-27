@@ -147,39 +147,40 @@ raup_crick= function(comun, reps=9){
 #calculate the βNTI and RC_bray, this procedure is excessively time consuming. 
 #In our study, it spent about half a month to finish this procedure.
 
-#Beta_NTI_bacteria<-Beta_NTI(bacteria.tree, filter.bac.tab)
+#Beta_NTI_bacteria <- Beta_NTI(bacteria.tree, filter.bac.tab)
 #Beta_NTI_bacteria_1000 <- as.matrix(Beta_NTI_bacteria)
-#write.csv(Beta_NTI_bacteria_1000,"./result/null_model/bacteria_bNTI_1000.csv",quote=F);
+#write.csv(Beta_NTI_bacteria_1000,"./result/null_model/bacteria_bNTI_1000.csv", quote = F);
 
-#Beta_NTI_fungi<-Beta_NTI(fungi.tree, filter.fun.tab)
+#Beta_NTI_fungi <- Beta_NTI(fungi.tree, filter.fun.tab)
 #Beta_NTI_fungi_1000 <- as.matrix(Beta_NTI_fungi)
-#write.csv(Beta_NTI_fungi_1000,"./result/null_model/fungi_bNTI_1000.csv",quote=F);
+#write.csv(Beta_NTI_fungi_1000,"./result/null_model/fungi_bNTI_1000.csv", quote = F);
 
 #protist
-#Beta_NTI_protists<-Beta_NTI(animal.tree, filter.anim.tab)
+#Beta_NTI_protists <- Beta_NTI(animal.tree, filter.anim.tab)
 #Beta_NTI_protists_1000 <- as.matrix(Beta_NTI_protists)
-#write.csv(Beta_NTI_protists_1000,"./result/null_model/protists_bNTI_1000.csv",quote=F);
+#write.csv(Beta_NTI_protists_1000,"./result/null_model/protists_bNTI_1000.csv", quote = F);
 
-#Beta_NTI_animal<-Beta_NTI(animal.tree, filter.anim.tab)
+#Beta_NTI_animal <- Beta_NTI(animal.tree, filter.anim.tab)
 #Beta_NTI_animal_1000 <- as.matrix(Beta_NTI_animal)
-#write.csv(b_NTI_animal_1000,"./result/null_mode/animal_bNTI_1000.csv",quote=F);
+#write.csv(b_NTI_animal_1000,"./result/null_mode/animal_bNTI_1000.csv", quote = F);
 
 #calculate the RC_bray
-#rcbray_bacteria<-raup_crick(filter.bac.tab)
+#rcbray_bacteria <- raup_crick(filter.bac.tab)
 #rcbray_bacteria_1000<-as.matrix(rcbray_bacteria)
-#write.csv(rcbray_bacteria_1000,"./result/null_model/raup_crick_bacteria_1000.csv",quote=F);
+#write.csv(rcbray_bacteria_1000,"./result/null_model/raup_crick_bacteria_1000.csv", quote = F);
 
-#rcbray_fungi<-raup_crick(filter.fun.tab)
+#rcbray_fungi <- raup_crick(filter.fun.tab)
 #rcbray_fungi_1000<-as.matrix(rcbray_fungi)
-#write.csv(rcbray_fungi,"./result/null_model/raup_crick_fungi_1000.csv",quote=F);
+#write.csv(rcbray_fungi,"./result/null_model/raup_crick_fungi_1000.csv",quote = F);
 
 #rcbray_protists<-raup_crick(filter.proti.tab)
 #rcbray_protists_1000<-as.matrix(rcbray_protists)
-#write.csv(rcbray_protists_1000,"./result/null_model/raup_crick_protists_1000.csv",quote=F);
+#write.csv(rcbray_protists_1000,"./result/null_model/raup_crick_protists_1000.csv", quote = F);
 
-#rcbray_animal<-raup_crick(filter.anim.tab)
+#rcbray_animal <- raup_crick(filter.anim.tab)
 #rcbray_animal_1000<-as.matrix(rcbray_animal)
-#write.csv(rcbray_animal_1000,"./result/null_model/animal/raup_crick_animal_1000.csv",quote=F);
+#write.csv(rcbray_animal_1000,"./result/null_model/animal/raup_crick_animal_1000.csv", quote = F);
+
 
 #read βNTI and RC_bray matrixes
 Beta_NTI_bacteria <- read.csv("./result/null_model/bacteria_bNTI_1000.csv", header = T, row.names = 1, stringsAsFactors = F);
