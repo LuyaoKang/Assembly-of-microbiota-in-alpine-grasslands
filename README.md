@@ -1,9 +1,0 @@
-# Assembly-of-soil-microbiota-in-alpine-grasslands
-This repository contains R codes and data for microbial community analysis of alpine grasslands on the Tibetan Plateau. 
-
-The *data* file contains the metadata, ASV tables, phylogenetic trees and corresponding taxonomic classifications. 
-
-The *r_scripts* file including the R scripts for all statistical analyses. 
-
-*Community Assembly in Alpine Ecosystem.html* file is the  knitr file for the analysis, which produced by *r_codes.Rmd* using knitr package in R.
-
