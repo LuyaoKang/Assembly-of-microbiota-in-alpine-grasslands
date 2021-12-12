@@ -895,8 +895,8 @@ Beta_NTI<-function(tree, comun){
   identical(colnames(match.phylo.comun$data), colnames(beta.mntd.weighted)); # just a check, should be TRUE
   identical(colnames(match.phylo.comun$data), rownames(beta.mntd.weighted)); # just a check, should be TRUE
   # calculate randomized betaMNTD
-  beta.reps = 9; # number of randomizations
-  rand.weighted.bMNTD.comp = array(c(-9), dim = c(ncol(match.phylo.comun$data), ncol(match.phylo.comun$data), beta.reps));
+  beta.reps = 999; # number of randomizations
+  rand.weighted.bMNTD.comp = array(c(-999), dim = c(ncol(match.phylo.comun$data), ncol(match.phylo.comun$data), beta.reps));
   for (rep in 1:beta.reps) {
     rand.weighted.bMNTD.comp[,,rep] = as.matrix(comdistnt(t(match.phylo.comun$data),
                                                           taxaShuffle(cophenetic(match.phylo.comun$phy)),
@@ -920,7 +920,7 @@ Beta_NTI<-function(tree, comun){
 }
 
 #RC_bray
-raup_crick= function(comun, reps=9){
+raup_crick= function(comun, reps=999){
   require(ecodist) 
   ## count number of sites and total species richness across all plots (gamma)
   n_sites<-nrow(comun)
